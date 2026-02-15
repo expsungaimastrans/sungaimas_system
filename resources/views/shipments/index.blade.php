@@ -250,35 +250,38 @@ function showMsg(id, text, ok=true){
 }
 
 async function setPembayaran(id, status){
-  if(!status) return;
+    if(!status) return;
 
-  const res = await fetch(`/shipments/${id}/set-pembayaran`, {
-    method: 'POST',
-    headers: {
-      'X-CSRF-TOKEN': csrf(),
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ status_pembayaran: status })
-  });
+    const res = await fetch(`/shipments/${id}/set-pembayaran`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrf(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ status })
+    });
 
-  const data = await res.json().catch(()=>({ok:false}));
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
 
-  if(!res.ok || !data.ok){
-    showMsg(id, data.message || 'Gagal update pembayaran', false);
-    return;
-  }
+    if(!res.ok || !data || !data.ok){
+        showMsg(id, (data && data.message) ? data.message : `Gagal update (HTTP ${res.status})`, false);
+        return;
+    }
 
-  const badge = document.getElementById(`pay-${id}`);
-  badge.textContent = data.status;
+    const badge = document.getElementById(`pay-${id}`);
+    badge.textContent = data.status;
 
-  badge.className = 'badge ' + (
-    data.status === 'LUNAS' ? 'text-bg-success' :
-    data.status === 'PIUTANG' ? 'text-bg-warning' :
-    data.status === 'BATAL' ? 'text-bg-danger' :
-    'text-bg-secondary'
-  );
+    badge.className = 'badge ' + (
+        data.status === 'LUNAS' ? 'text-bg-success' :
+        data.status === 'PIUTANG' ? 'text-bg-warning' :
+        data.status === 'BATAL' ? 'text-bg-danger' :
+        'text-bg-secondary'
+    );
 
-  showMsg(id, 'Status pembayaran diperbarui');
+    showMsg(id, 'Status pembayaran diperbarui');
 }
+
 </script>
 @endsection

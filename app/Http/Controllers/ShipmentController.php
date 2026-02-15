@@ -453,16 +453,25 @@ public function exportCsv(Request $request)
     public function setStatusPembayaran(Request $request, $id)
 {
     $shipment = Shipment::findOrFail($id);
-    $allowed = ['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'];
 
-    $val = $request->input('status_pembayaran');
-    if (!in_array($val, $allowed)) {
-        return response()->json(['ok'=>false,'message'=>'Status pembayaran tidak valid'], 422);
+    // frontend kirim: { status: "LUNAS" }
+    $val = $request->input('status') ?? $request->input('status_pembayaran');
+
+    $allowed = ['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'];
+    if (!in_array($val, $allowed, true)) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Status pembayaran tidak valid'
+        ], 422);
     }
 
-    $shipment->update(['status_pembayaran' => $val]);
+    $shipment->status_pembayaran = $val;
+    $shipment->save();
 
-    return response()->json(['ok'=>true,'status'=>$val]);
+    return response()->json([
+        'ok' => true,
+        'status' => $shipment->status_pembayaran
+    ]);
 }
 
 
