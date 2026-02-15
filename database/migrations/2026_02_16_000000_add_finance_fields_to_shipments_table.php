@@ -8,34 +8,17 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('shipments', function (Blueprint $table) {
-            // aman: hanya add kalau belum ada
             if (!Schema::hasColumn('shipments', 'tipe_bayar')) {
-                $table->string('tipe_bayar', 20)->nullable()->after('status_pembayaran'); // COD / COT
+                $table->string('tipe_bayar', 20)->nullable()->after('status_pembayaran');
             }
-
             if (!Schema::hasColumn('shipments', 'paid_at')) {
                 $table->timestamp('paid_at')->nullable()->after('tipe_bayar');
             }
-
             if (!Schema::hasColumn('shipments', 'bukti_bayar')) {
-                $table->string('bukti_bayar', 255)->nullable()->after('paid_at'); // path file
+                $table->string('bukti_bayar')->nullable()->after('paid_at');
             }
         });
     }
 
-    public function down(): void
-    {
-        Schema::table('shipments', function (Blueprint $table) {
-            if (Schema::hasColumn('shipments', 'bukti_bayar')) {
-                $table->dropColumn('bukti_bayar');
-            }
-            if (Schema::hasColumn('shipments', 'paid_at')) {
-                $table->dropColumn('paid_at');
-            }
-            if (Schema::hasColumn('shipments', 'tipe_bayar')) {
-                $table->dropColumn('tipe_bayar');
-            }
-        });
-    }
+    public function down(): void {}
 };
-
