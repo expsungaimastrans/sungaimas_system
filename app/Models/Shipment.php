@@ -28,6 +28,7 @@ class Shipment extends Model
         'keterangan',
         'admin_id',
         'status_pengiriman',
+        'status_pembayaran',
         'manifest_id',
     ];
 
