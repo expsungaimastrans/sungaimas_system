@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\InvoiceController;
 
 // =======================================================================
 // HOME
@@ -68,6 +70,19 @@ Route::get('/dashboard/data', [DashboardController::class, 'data']); // untuk up
 Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
 Route::get('/shipments/export/csv', [ShipmentController::class, 'exportCsv'])->name('shipments.export.csv');
 
+// ======================
+// FINANCE
+// ======================
+Route::get('/finance', [FinanceController::class, 'index']);                 // list manifest + badge unpaid
+Route::get('/finance/manifests/{id}', [FinanceController::class, 'manifest']); // detail manifest -> list shipments
+Route::post('/finance/shipments/{id}/update', [FinanceController::class, 'updateShipmentFinance']); // update status/metode + bukti
+
+// ======================
+// TAGIHAN (INVOICE)
+// ======================
+Route::get('/finance/tagihan/create', [InvoiceController::class, 'create']);     // pilih nota
+Route::post('/finance/tagihan', [InvoiceController::class, 'store']);           // simpan invoice + items
+Route::get('/finance/tagihan/{id}/pdf', [InvoiceController::class, 'pdf']);     // pdf invoice
 
 
 

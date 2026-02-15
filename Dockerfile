@@ -24,3 +24,12 @@ RUN composer install --optimize-autoloader --no-interaction --no-dev
 EXPOSE 8080
 
 CMD php artisan serve --host 0.0.0.0 --port $PORT
+
+
+
+
+
+RUN apt-get update && apt-get install -y libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-install gd
+
