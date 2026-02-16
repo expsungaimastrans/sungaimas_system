@@ -8,7 +8,8 @@
     <div class="text-muted">Kelola pembayaran berdasarkan manifest</div>
   </div>
   <div class="d-flex gap-2 mt-2 mt-md-0">
-    <a href="/manifests" class="btn btn-outline-secondary">Daftar Manifest</a>
+    <a href="{{ route('finance.invoices') }}" class="btn btn-brand">+ Buat Tagihan</a>
+  <a href="/manifests" class="btn btn-outline-secondary">Daftar Manifest</a>
   </div>
 </div>
 

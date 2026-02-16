@@ -49,17 +49,7 @@
 </div>
 
 {{-- FORM TAGIHAN (gabungan nota) --}}
-<div class="card shadow-sm mb-3">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div>
-        <div class="fw-semibold">Buat Tagihan (PDF)</div>
-        <div class="text-muted small">Pilih nota, lalu generate 1 PDF tagihan gabungan</div>
-      </div>
-      <button form="invoiceForm" class="btn btn-brand btn-sm" type="submit">
-        Buat Tagihan
-      </button>
-    </div>
+
 
     <form id="invoiceForm" method="POST" action="{{ route('finance.invoice.generate') }}">
       @csrf

@@ -127,10 +127,19 @@ Route::middleware(['auth'])->group(function () {
     // ================================
     Route::prefix('finance')->middleware('role:owner,finance')->group(function () {
         Route::get('/', [FinanceController::class, 'index'])->name('finance.index');
+    
+        // Kelola finance per manifest
         Route::get('/manifest/{manifest}', [FinanceController::class, 'byManifest'])->name('finance.manifest');
         Route::post('/shipments/{shipment}/update', [FinanceController::class, 'updateShipmentFinance'])->name('finance.shipment.update');
+    
+        // ✅ PAGE LUAR: Buat Tagihan (rekap beberapa nota)
+        Route::get('/invoices', [FinanceController::class, 'invoices'])->name('finance.invoices');
+        Route::get('/invoices/data', [FinanceController::class, 'invoiceData'])->name('finance.invoices.data');
+    
+        // Generate PDF tagihan
         Route::post('/invoice/generate', [FinanceController::class, 'generateInvoicePdf'])->name('finance.invoice.generate');
     });
+    
     
 
 
