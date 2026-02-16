@@ -72,15 +72,18 @@
           </select>
         </div>
 
-        <div class="col-lg-2">
-          <label class="form-label fw-semibold mb-1">Dari</label>
-          <input type="date" name="from" value="{{ $f_from }}" class="form-control">
-        </div>
+        @if(!empty($canDateRange) && $canDateRange)
+  <div class="col-md-2">
+    <label class="form-label small text-muted">Dari</label>
+    <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control form-control-sm">
+  </div>
 
-        <div class="col-lg-2">
-          <label class="form-label fw-semibold mb-1">Sampai</label>
-          <input type="date" name="to" value="{{ $f_to }}" class="form-control">
-        </div>
+  <div class="col-md-2">
+    <label class="form-label small text-muted">Sampai</label>
+    <input type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control form-control-sm">
+  </div>
+@endif
+
 
         <div class="col-lg-8 d-flex gap-2 justify-content-end">
             <button class="btn btn-brand">Terapkan</button>
@@ -185,31 +188,48 @@
               @endif
             </td>
 
-            {{-- PEMBAYARAN (ubah via dropdown ajax) --}}
-            <td class="text-center">
-              @php
-                $payClass = match($s->status_pembayaran){
-                  'LUNAS' => 'text-bg-success',
-                  'PIUTANG' => 'text-bg-warning',
-                  'BATAL' => 'text-bg-danger',
-                  default => 'text-bg-secondary'
-                };
-              @endphp
+            {{-- PEMBAYARAN --}}
+<td class="text-center">
+  @php
+      $payClass = match($s->status_pembayaran){
+          'LUNAS' => 'text-bg-success',
+          'PIUTANG' => 'text-bg-warning',
+          'BATAL' => 'text-bg-danger',
+          default => 'text-bg-secondary'
+      };
 
-              <span id="pay-{{ $s->id }}" class="badge {{ $payClass }}">
-                {{ $s->status_pembayaran }}
-              </span>
+      $canEditPayment = auth()->check() 
+          && in_array(auth()->user()->role, ['owner','finance'], true);
+  @endphp
 
-              <div class="mt-2">
-                <select class="form-select form-select-sm"
-                        onchange="setPembayaran({{ $s->id }}, this.value)">
-                  <option value="">-- ubah --</option>
-                  @foreach(['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'] as $x)
-                    <option value="{{ $x }}">{{ $x }}</option>
-                  @endforeach
-                </select>
-              </div>
-            </td>
+  <span id="pay-{{ $s->id }}" class="badge {{ $payClass }}">
+      {{ $s->status_pembayaran }}
+  </span>
+
+  @if($canEditPayment)
+      <div class="mt-2">
+          <select class="form-select form-select-sm"
+              onchange="setPembayaran({{ $s->id }}, this.value)">
+
+              <option value="">-- ubah --</option>
+
+              @foreach(['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'] as $opt)
+                  <option value="{{ $opt }}"
+                      {{ $s->status_pembayaran === $opt ? 'selected' : '' }}>
+                      {{ $opt }}
+                  </option>
+              @endforeach
+
+          </select>
+      </div>
+  @else
+      <div class="small text-muted mt-2">
+          Tidak dapat diubah
+      </div>
+  @endif
+</td>
+
+            
 
             {{-- AKSI --}}
             <td class="text-center">

@@ -10,72 +10,86 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class ShipmentController extends Controller
 {
     public function index(Request $request)
-{
-    $q          = trim((string) $request->query('q', ''));
-    $tujuan     = trim((string) $request->query('tujuan', ''));
-    $penerima   = trim((string) $request->query('penerima', ''));
-    $sp         = trim((string) $request->query('status_pembayaran', ''));
-    $sk         = trim((string) $request->query('status_pengiriman', ''));
-    $from       = $request->query('from');
-    $to         = $request->query('to');
-
-    $base = Shipment::query()
-        ->when($q, function ($query) use ($q) {
-            $query->where(function ($qq) use ($q) {
-                $qq->where('no_nota', 'like', "%{$q}%")
-                    ->orWhere('nama_pengirim', 'like', "%{$q}%")
-                    ->orWhere('nama_penerima', 'like', "%{$q}%")
-                    ->orWhere('telp_pengirim', 'like', "%{$q}%")
-                    ->orWhere('telp_penerima', 'like', "%{$q}%")
-                    ->orWhere('tujuan', 'like', "%{$q}%");
-            });
-        })
-        ->when($tujuan, fn($query) => $query->where('tujuan', $tujuan))
-        ->when($penerima, fn($query) => $query->where('nama_penerima', 'like', "%{$penerima}%"))
-        ->when($sp, fn($query) => $query->where('status_pembayaran', $sp))
-        ->when($sk, fn($query) => $query->where('status_pengiriman', $sk))
-        ->when($from, fn($query) => $query->whereDate('created_at', '>=', $from))
-        ->when($to, fn($query) => $query->whereDate('created_at', '<=', $to));
-
-    // pagination list
-    $shipments = (clone $base)
-        ->orderBy('created_at', 'desc')
-        ->paginate(10)
-        ->withQueryString();
-
-    // tujuan options
-    $tujuanOptions = Shipment::query()
-        ->select('tujuan')
-        ->whereNotNull('tujuan')
-        ->where('tujuan', '<>', '')
-        ->distinct()
-        ->orderBy('tujuan')
-        ->pluck('tujuan');
-
-    // summary (sesuai filter!)
-    $summary = [
-        'count' => (clone $base)->count(),
-        'omzet' => (float) (clone $base)->sum('harga_total'),
-        'piutang' => (float) (clone $base)->where('status_pembayaran', 'PIUTANG')->sum('harga_total'),
-        'belum_bayar' => (clone $base)->where('status_pembayaran', 'BELUM_BAYAR')->count(),
-        'dalam_pengiriman' => (clone $base)->where('status_pengiriman', 'DALAM_PENGIRIMAN')->count(),
-    ];
-
-    return view('shipments.index', [
-        'shipments'     => $shipments,
-        'tujuanOptions' => $tujuanOptions,
-        'summary'       => $summary,
-        'filters' => [
-            'q' => $q,
-            'tujuan' => $tujuan,
-            'penerima' => $penerima,
-            'status_pembayaran' => $sp,
-            'status_pengiriman' => $sk,
-            'from' => $from,
-            'to' => $to,
-        ],
-    ]);
-}
+    {
+        $user = $request->user();
+        $role = $user?->role;
+    
+        // admin tidak boleh filter tanggal
+        $canDateRange = in_array($role, ['owner', 'finance'], true);
+    
+        $q          = trim((string) $request->query('q', ''));
+        $tujuan     = trim((string) $request->query('tujuan', ''));
+        $penerima   = trim((string) $request->query('penerima', ''));
+        $sp         = trim((string) $request->query('status_pembayaran', ''));
+        $sk         = trim((string) $request->query('status_pengiriman', ''));
+    
+        // hanya dipakai kalau role boleh
+        $from       = $canDateRange ? $request->query('from') : null;
+        $to         = $canDateRange ? $request->query('to') : null;
+    
+        $base = Shipment::query()
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($qq) use ($q) {
+                    $qq->where('no_nota', 'like', "%{$q}%")
+                        ->orWhere('nama_pengirim', 'like', "%{$q}%")
+                        ->orWhere('nama_penerima', 'like', "%{$q}%")
+                        ->orWhere('telp_pengirim', 'like', "%{$q}%")
+                        ->orWhere('telp_penerima', 'like', "%{$q}%")
+                        ->orWhere('tujuan', 'like', "%{$q}%");
+                });
+            })
+            ->when($tujuan, fn($query) => $query->where('tujuan', $tujuan))
+            ->when($penerima, fn($query) => $query->where('nama_penerima', 'like', "%{$penerima}%"))
+            ->when($sp, fn($query) => $query->where('status_pembayaran', $sp))
+            ->when($sk, fn($query) => $query->where('status_pengiriman', $sk))
+            // ✅ hanya jalan jika role boleh date range
+            ->when($canDateRange && $from, fn($query) => $query->whereDate('created_at', '>=', $from))
+            ->when($canDateRange && $to, fn($query) => $query->whereDate('created_at', '<=', $to));
+    
+        // pagination list
+        $shipments = (clone $base)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+    
+        // tujuan options
+        $tujuanOptions = Shipment::query()
+            ->select('tujuan')
+            ->whereNotNull('tujuan')
+            ->where('tujuan', '<>', '')
+            ->distinct()
+            ->orderBy('tujuan')
+            ->pluck('tujuan');
+    
+        // summary (sesuai filter!)
+        $summaryBase = clone $base;
+    
+        $summary = [
+            'count' => (clone $summaryBase)->count(),
+            'omzet' => (float) (clone $summaryBase)->sum('harga_total'),
+            'piutang' => (float) (clone $summaryBase)->where('status_pembayaran', 'PIUTANG')->sum('harga_total'),
+            'belum_bayar' => (clone $summaryBase)->where('status_pembayaran', 'BELUM_BAYAR')->count(),
+            'dalam_pengiriman' => (clone $summaryBase)->where('status_pengiriman', 'DALAM_PENGIRIMAN')->count(),
+        ];
+    
+        return view('shipments.index', [
+            'shipments'     => $shipments,
+            'tujuanOptions' => $tujuanOptions,
+            'summary'       => $summary,
+            'canDateRange'  => $canDateRange, // ✅ buat blade
+            'filters' => [
+                'q' => $q,
+                'tujuan' => $tujuan,
+                'penerima' => $penerima,
+                'status_pembayaran' => $sp,
+                'status_pengiriman' => $sk,
+                // ✅ jika admin, tetap kosong biar gak kepakai
+                'from' => $from,
+                'to' => $to,
+            ],
+        ]);
+    }
+    
 
 
 public function exportCsv(Request $request)
@@ -452,27 +466,33 @@ public function exportCsv(Request $request)
      */
     public function setStatusPembayaran(Request $request, $id)
 {
-    $shipment = Shipment::findOrFail($id);
-
-    // frontend kirim: { status: "LUNAS" }
-    $val = $request->input('status') ?? $request->input('status_pembayaran');
-
-    $allowed = ['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'];
-    if (!in_array($val, $allowed, true)) {
+    if (!auth()->check() || !in_array(auth()->user()->role, ['owner','finance'])) {
         return response()->json([
             'ok' => false,
-            'message' => 'Status pembayaran tidak valid'
+            'message' => 'Tidak memiliki akses.'
+        ], 403);
+    }
+
+    $shipment = Shipment::findOrFail($id);
+
+    $allowed = ['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'];
+
+    $val = $request->input('status');
+    if (!in_array($val, $allowed)) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Status tidak valid.'
         ], 422);
     }
 
-    $shipment->status_pembayaran = $val;
-    $shipment->save();
+    $shipment->update(['status_pembayaran' => $val]);
 
     return response()->json([
         'ok' => true,
-        'status' => $shipment->status_pembayaran
+        'status' => $val
     ]);
 }
+
 
 
     // =========================
