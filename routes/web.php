@@ -41,6 +41,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/shipments', [ShipmentController::class, 'index'])
             ->name('shipments.index');
 
+            Route::get('/shipments/export/csv', [ShipmentController::class, 'exportCsv'])
+    ->middleware('role:owner,finance') // admin tidak boleh export (sesuai aturan finance/owner)
+    ->name('shipments.export.csv');
+
+
         Route::get('/shipments/{id}/pdf', [ShipmentController::class, 'pdf'])
             ->name('shipments.pdf');
 
@@ -53,6 +58,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/api/shipments/{id}', [ShipmentController::class, 'showJson'])
             ->name('shipments.showJson');
     });
+
+    
 
     // OWNER + ADMIN
     Route::middleware('role:owner,admin')->group(function () {
