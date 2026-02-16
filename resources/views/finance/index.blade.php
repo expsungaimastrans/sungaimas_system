@@ -2,13 +2,13 @@
 @section('title','Finance')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
   <div>
     <div class="page-title h4 mb-0">Finance</div>
-    <div class="text-muted">Pilih manifest → update pembayaran & upload bukti bayar (COT)</div>
+    <div class="text-muted">Kelola pembayaran berdasarkan manifest</div>
   </div>
-  <div class="d-flex gap-2">
-    <a href="/finance/tagihan/create" class="btn btn-brand">+ Buat Tagihan (PDF)</a>
+  <div class="d-flex gap-2 mt-2 mt-md-0">
+    <a href="/manifests" class="btn btn-outline-secondary">Daftar Manifest</a>
   </div>
 </div>
 
@@ -23,41 +23,58 @@
   <div class="card-body">
     <div class="table-responsive">
       <table class="table table-bordered align-middle">
-        <thead class="text-center">
-          <tr>
-            <th>No Manifest</th>
-            <th>Tanggal Muat</th>
+        <thead>
+          <tr class="text-center">
+            <th style="width:160px;">No Manifest</th>
+            <th style="width:120px;">Manifest Ke</th>
             <th>Sopir / Nopol</th>
-            <th>Progress Lunas</th>
-            <th style="width:160px;">Aksi</th>
+            <th style="width:140px;">Tanggal Muat</th>
+            <th style="width:200px;">Status Pembayaran</th>
+            <th style="width:140px;">Aksi</th>
           </tr>
         </thead>
         <tbody>
-          @forelse($manifests as $m)
-            @php
-              $badge = ($m->unpaid > 0) ? 'text-bg-warning' : 'text-bg-success';
-              $text = "{$m->unpaid}/{$m->total} nota belum lunas";
-            @endphp
-            <tr>
-              <td class="text-center fw-bold">{{ $m->no_manifest }}</td>
-              <td class="text-center">{{ $m->tanggal_muat }}</td>
-              <td>{{ $m->sopir }} / {{ $m->nopol }}</td>
-              <td class="text-center">
-                <span class="badge {{ $badge }}">{{ $text }}</span>
-              </td>
-              <td class="text-center">
-                <a href="{{ route('finance.manifest', $m->id) }}" class="btn btn-sm btn-primary">
-                    Kelola
-                </a>
-                
-                <a class="btn btn-sm btn-outline-secondary" href="/manifests/{{ $m->id }}/pdf">PDF Manifest</a>
-              </td>
-            </tr>
-          @empty
-            <tr><td colspan="5" class="text-center text-muted py-4">Belum ada manifest.</td></tr>
-          @endforelse
+        @forelse($manifests as $m)
+          @php
+            $stat = $unpaidMap[$m->id] ?? null;
+            $total = (int)($stat->total ?? 0);
+            $unpaid = (int)($stat->unpaid ?? 0);
+          @endphp
+          <tr>
+            <td class="text-center fw-bold">{{ $m->no_manifest }}</td>
+            <td class="text-center">{{ $m->manifest_ke }}</td>
+            <td>
+              <div class="fw-semibold">{{ $m->sopir ?: '-' }}</div>
+              <div class="text-muted small">{{ $m->nopol ?: '-' }}</div>
+            </td>
+            <td class="text-center">
+              {{ $m->tanggal_muat ? \Carbon\Carbon::parse($m->tanggal_muat)->format('d/m/Y') : '-' }}
+            </td>
+            <td class="text-center">
+              <span class="badge {{ $unpaid>0 ? 'text-bg-warning' : 'text-bg-success' }}">
+                {{ $unpaid }}/{{ $total }} nota belum lunas
+              </span>
+              <div class="text-muted small mt-1">
+                (Manifest dipakai untuk sorting finance)
+              </div>
+            </td>
+            <td class="text-center">
+              <a href="{{ route('finance.manifest', $m->id) }}" class="btn btn-sm btn-brand">
+                Kelola
+              </a>
+            </td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">Belum ada manifest.</td>
+          </tr>
+        @endforelse
         </tbody>
       </table>
+    </div>
+
+    <div class="mt-3">
+      {{ $manifests->links() }}
     </div>
   </div>
 </div>

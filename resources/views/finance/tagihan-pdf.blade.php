@@ -2,52 +2,31 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Tagihan {{ $invoice->no_invoice }}</title>
+<title>Tagihan {{ $invoiceNo }}</title>
 <style>
-  body{ font-family:"Times New Roman", serif; font-size:11px; }
-  table{ width:100%; border-collapse:collapse; }
-  .line td{ border-bottom:1px solid #000; }
-  .box td,.box th{ border:1px solid #000; padding:4px; }
-  .center{text-align:center;}
-  .right{text-align:right;}
-  .bold{font-weight:bold;}
-  .small{font-size:10px;}
+  body { font-family:"Times New Roman", serif; font-size: 11px; }
+  table { width:100%; border-collapse: collapse; }
+  .line td { border-bottom:1px solid #000; }
+  .box td, .box th { border:1px solid #000; padding:4px; }
+  .center { text-align:center; }
+  .right { text-align:right; }
+  .bold { font-weight:bold; }
+  .small { font-size:10px; }
 </style>
 </head>
 <body>
 
-@php
-  // Pakai SVG dulu (lebih aman di server tanpa GD)
-  $svgPath = public_path('logo.svg');
-  $pngPath = public_path('logo.png');
-
-  $logoSvg = null;
-  if (file_exists($svgPath)) {
-      $logoSvg = file_get_contents($svgPath);
-  }
-
-  $hasPng = file_exists($pngPath);
-@endphp
-
-<!-- HEADER -->
+{{-- HEADER --}}
 <table>
   <tr>
-    <td width="55%" valign="top">
+    <td width="45%">
       <table>
         <tr>
-          <td width="28%" valign="top">
-            {{-- LOGO --}}
-            @if($logoSvg)
-              {!! $logoSvg !!}
-            @elseif($hasPng)
-              {{-- PNG butuh GD di Railway --}}
-              <img src="{{ $pngPath }}" width="90">
-            @else
-              <div class="bold">Sungai Mas Trans</div>
-            @endif
+          <td width="30%" valign="top">
+            <img src="{{ public_path('logo.png') }}" width="80">
           </td>
-          <td width="72%" valign="top">
-            <div class="bold" style="font-size:13px;">Sungai Mas Trans</div>
+          <td width="70%" valign="top">
+            <strong>Sungai Mas Trans</strong><br>
             Jl. Pesapen Selatan No.2/A<br>
             Sungai Mas - Indonesia 45311<br>
             Telp. (031) 3550447<br>
@@ -57,88 +36,116 @@
       </table>
     </td>
 
-    <td width="45%" valign="top" class="right">
-      <div class="bold" style="font-size:16px;">TAGIHAN</div>
-      <div class="bold">{{ $invoice->no_invoice }}</div>
-      <div class="small">Tanggal: {{ $invoice->tanggal->format('d F Y') }}</div>
+    <td width="35%" class="center">
+      <div style="font-size:16px; font-weight:bold;">TAGIHAN</div>
+      <div class="small">Rekap beberapa nota pengiriman</div>
+    </td>
 
-      <table style="width:100%; margin-top:6px;">
-        <tr>
-          <td class="right bold" style="width:40%;">Customer</td>
-          <td style="width:60%;">: {{ $invoice->customer ?: '-' }}</td>
-        </tr>
-        <tr>
-          <td class="right bold">Catatan</td>
-          <td>: {{ $invoice->catatan ?: '-' }}</td>
-        </tr>
-      </table>
+    <td width="20%" class="right">
+      <strong>{{ $invoiceNo }}</strong><br>
+      Tanggal: {{ now()->format('d F Y') }}
     </td>
   </tr>
 </table>
 
 <hr>
 
-<!-- RINGKASAN -->
 <table class="line">
   <tr>
-    <td width="60%">
-      <span class="bold">Rekap Nota:</span> {{ $invoice->items->count() }} nota
+    <td width="70%">
+      <strong>Perihal:</strong> Tagihan Pengiriman (Rekap Nota)<br>
+      <strong>Jumlah Nota:</strong> {{ $shipments->count() }} Nota
     </td>
-    <td width="40%" class="right">
-      <span class="bold">TOTAL TAGIHAN:</span>
-      <span class="bold">Rp {{ number_format($invoice->total,0,',','.') }}</span>
+    <td width="30%" class="right">
+      <strong>TOTAL TAGIHAN</strong><br>
+      <span style="font-size:14px; font-weight:bold;">
+        Rp {{ number_format($grandTotal,0,',','.') }}
+      </span>
     </td>
   </tr>
 </table>
 
 <br>
 
-<!-- TABEL NOTA -->
+{{-- TABEL REKAP --}}
 <table class="box">
   <thead>
     <tr class="center bold">
       <th width="6%">No</th>
       <th width="18%">No Nota</th>
-      <th width="26%">Penerima</th>
-      <th width="14%">Tujuan</th>
-      <th width="16%">Nilai</th>
-      <th width="20%">Status Bayar</th>
+      <th width="22%">Penerima</th>
+      <th width="16%">Tujuan</th>
+      <th width="14%">Status Bayar</th>
+      <th width="24%">Total</th>
     </tr>
   </thead>
   <tbody>
-    @foreach($invoice->items as $i => $it)
+    @foreach($shipments as $i => $s)
       <tr>
         <td class="center">{{ $i+1 }}</td>
-        <td class="center">{{ $it->no_nota }}</td>
-        <td>{{ $it->penerima }}</td>
-        <td class="center">{{ $it->tujuan }}</td>
-        <td class="right">{{ number_format($it->nilai,0,',','.') }}</td>
-        <td class="center">{{ $it->shipment?->status_pembayaran }}</td>
+        <td class="center">{{ $s->no_nota }}</td>
+        <td>{{ $s->nama_penerima }}</td>
+        <td class="center">{{ $s->tujuan }}</td>
+        <td class="center">{{ $s->status_pembayaran }}</td>
+        <td class="right">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
       </tr>
     @endforeach
     <tr>
-      <td colspan="4" class="right bold">TOTAL</td>
-      <td class="right bold">{{ number_format($invoice->total,0,',','.') }}</td>
-      <td></td>
+      <td colspan="5" class="right bold">GRAND TOTAL</td>
+      <td class="right bold">Rp {{ number_format($grandTotal,0,',','.') }}</td>
     </tr>
   </tbody>
 </table>
 
 <br>
 
-<!-- FOOTER -->
+{{-- DETAIL BARANG PER NOTA (opsional, tapi berguna) --}}
+@foreach($shipments as $s)
+  <div style="margin-top:10px;">
+    <div class="bold">Detail Nota: {{ $s->no_nota }} - {{ $s->nama_penerima }} ({{ $s->tujuan }})</div>
+    <table class="box" style="margin-top:4px;">
+      <thead>
+        <tr class="center bold">
+          <th width="10%">Koli</th>
+          <th width="10%">Kg</th>
+          <th width="60%">Barang</th>
+          <th width="20%">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach($s->items as $it)
+          <tr>
+            <td class="center">{{ (float)($it->koli ?? $it->jumlah ?? 0) }}</td>
+            <td class="center">{{ (float)($it->berat_kg ?? 0) }}</td>
+            <td>{{ strtoupper($it->nama_barang ?? '') }}</td>
+            <td class="right">Rp {{ number_format((float)($it->subtotal ?? 0),0,',','.') }}</td>
+          </tr>
+        @endforeach
+      </tbody>
+    </table>
+  </div>
+@endforeach
+
+<hr>
+
+<div class="small">
+  <b>Catatan:</b> Mohon lakukan pembayaran sesuai total tagihan di atas. Terima kasih atas kerja samanya.
+</div>
+
+<br>
+
 <table>
   <tr>
-    <td width="60%">
-      <div class="bold">Transfer Bank:</div>
+    <td width="55%">
+      Transfer Bank:<br>
       BRI : 221601000224568<br>
       BNI : 0050385081<br>
       BCA : 8620008665<br>
       A/n Weenarto Trimaryono
     </td>
-    <td width="40%" class="right">
+    <td width="45%" class="right">
       Hormat Kami,<br><br><br>
-      <span class="bold">Sungai Mas Trans</span>
+      <strong>Sungai Mas Trans</strong>
     </td>
   </tr>
 </table>

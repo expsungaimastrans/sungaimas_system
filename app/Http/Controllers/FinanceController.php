@@ -6,100 +6,94 @@ use App\Models\Manifest;
 use App\Models\Shipment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class FinanceController extends Controller
 {
     /**
-     * List manifest, tampilkan label xx/xx belum lunas
+     * Finance Home: list manifests + badge unpaid
      */
     public function index()
     {
+        // Ambil manifests terbaru + hitung total nota & unpaid
         $manifests = Manifest::query()
+            ->withCount('items')
             ->orderByDesc('created_at')
+            ->paginate(12);
+
+        // hitung unpaid per manifest_id (shipments.manifest_id)
+        $unpaidMap = Shipment::query()
+            ->selectRaw('manifest_id, COUNT(*) as total, SUM(CASE WHEN status_pembayaran != "LUNAS" THEN 1 ELSE 0 END) as unpaid')
+            ->whereNotNull('manifest_id')
+            ->groupBy('manifest_id')
             ->get()
-            ->map(function($m){
-                $total = Shipment::where('manifest_id', $m->id)->count();
-                $unpaid = Shipment::where('manifest_id', $m->id)
-                    ->whereIn('status_pembayaran', ['BELUM_BAYAR','PIUTANG'])
-                    ->count();
+            ->keyBy('manifest_id');
 
-                return (object)[
-                    'id' => $m->id,
-                    'no_manifest' => $m->no_manifest,
-                    'manifest_ke' => $m->manifest_ke,
-                    'tanggal_muat' => $m->tanggal_muat,
-                    'sopir' => $m->sopir,
-                    'nopol' => $m->nopol,
-                    'total' => $total,
-                    'unpaid' => $unpaid,
-                ];
-            });
-
-        return view('finance.index', compact('manifests'));
+        return view('finance.index', [
+            'manifests' => $manifests,
+            'unpaidMap' => $unpaidMap,
+        ]);
     }
 
     /**
-     * Detail 1 manifest: list shipments di manifest tsb
+     * Finance by Manifest: list shipments in the manifest
+     * URL: /finance/manifest/{manifest}
      */
-    public function manifest($id)
+    public function byManifest(Manifest $manifest)
     {
-        $manifest = Manifest::findOrFail($id);
-
-        $shipments = Shipment::where('manifest_id', $manifest->id)
+        // shipments yang masuk manifest ini
+        $shipments = Shipment::query()
+            ->with('items')
+            ->where('manifest_id', $manifest->id)
             ->orderByDesc('created_at')
             ->get();
 
         $total = $shipments->count();
-        $unpaid = $shipments->whereIn('status_pembayaran', ['BELUM_BAYAR','PIUTANG'])->count();
+        $unpaid = $shipments->where('status_pembayaran', '!=', 'LUNAS')->count();
 
-        return view('finance.manifest', compact('manifest','shipments','total','unpaid'));
+        return view('finance.manifest', [
+            'manifest' => $manifest,
+            'shipments' => $shipments,
+            'total' => $total,
+            'unpaid' => $unpaid,
+        ]);
     }
 
     /**
-     * Update finance shipment:
-     * - admin set COD/COT
-     * - update status pembayaran
-     * - jika COT dan status jadi LUNAS => wajib upload bukti bayar
+     * Update finance fields for one shipment
+     * POST /finance/shipments/{shipment}/update
+     *
+     * Rules:
+     * - tipe_bayar: COD / COT
+     * - kalau COT wajib upload bukti bayar ketika status LUNAS
      */
-    public function updateShipmentFinance(Request $request, $id)
+    public function updateShipmentFinance(Request $request, Shipment $shipment)
     {
-        $shipment = Shipment::findOrFail($id);
-
         $request->validate([
-            'tipe_bayar' => 'required|in:COD,COT',
             'status_pembayaran' => 'required|in:BELUM_BAYAR,LUNAS,PIUTANG,BATAL',
-            'bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+            'tipe_bayar'        => 'required|in:COD,COT',
+            'bukti_bayar'       => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
-        $tipe = $request->tipe_bayar;
-        $status = $request->status_pembayaran;
+        return DB::transaction(function () use ($request, $shipment) {
+            $status = $request->status_pembayaran;
+            $tipe   = $request->tipe_bayar;
 
-        // Rule: COT wajib upload bukti bayar (minimal saat mau jadi LUNAS)
-        if ($tipe === 'COT' && $status === 'LUNAS') {
-            $hasExisting = !empty($shipment->bukti_bayar_path);
-            $hasNew = $request->hasFile('bukti');
+            // Handle upload file
+            $path = $shipment->bukti_bayar_path ?? null;
 
-            if (!$hasExisting && !$hasNew) {
-                return back()->with('error', 'COT wajib upload bukti bayar sebelum status menjadi LUNAS.');
-            }
-        }
-
-        return DB::transaction(function() use ($request, $shipment, $tipe, $status){
-            // upload bukti jika ada
-            if ($request->hasFile('bukti')) {
-                $path = $request->file('bukti')->store('bukti-bayar', 'public');
-
-                // hapus lama (optional)
-                if ($shipment->bukti_bayar_path) {
-                    Storage::disk('public')->delete($shipment->bukti_bayar_path);
-                }
-
-                $shipment->bukti_bayar_path = $path;
+            if ($request->hasFile('bukti_bayar')) {
+                $path = $request->file('bukti_bayar')->store('bukti-bayar', 'public');
             }
 
-            $shipment->tipe_bayar = $tipe;
+            // Rule: kalau COT & status LUNAS wajib ada bukti bayar
+            if ($tipe === 'COT' && $status === 'LUNAS' && !$path) {
+                return back()->with('error', 'COT + LUNAS wajib upload bukti bayar.');
+            }
+
             $shipment->status_pembayaran = $status;
+            $shipment->tipe_bayar = $tipe;
+            $shipment->bukti_bayar_path = $path;
 
             if ($status === 'LUNAS') {
                 $shipment->paid_at = now();
@@ -111,5 +105,40 @@ class FinanceController extends Controller
 
             return back()->with('success', 'Finance nota berhasil diupdate.');
         });
+    }
+
+    /**
+     * Generate Invoice PDF (Tagihan gabungan beberapa nota)
+     * POST /finance/invoice/generate
+     *
+     * Request: shipment_ids[] (checkbox list)
+     */
+    public function generateInvoicePdf(Request $request)
+    {
+        $request->validate([
+            'shipment_ids'   => 'required|array|min:1',
+            'shipment_ids.*' => 'numeric',
+        ]);
+
+        $shipments = Shipment::with('items')
+            ->whereIn('id', $request->shipment_ids)
+            ->orderBy('created_at')
+            ->get();
+
+        if ($shipments->isEmpty()) {
+            return back()->with('error', 'Tidak ada nota dipilih.');
+        }
+
+        // data invoice sederhana
+        $invoiceNo = 'INV-' . now()->format('Ymd-His');
+        $grandTotal = (float)$shipments->sum('harga_total');
+
+        $pdf = Pdf::loadView('finance.invoice_pdf', [
+            'invoiceNo' => $invoiceNo,
+            'shipments' => $shipments,
+            'grandTotal' => $grandTotal,
+        ])->setPaper('A4', 'portrait');
+
+        return $pdf->stream("tagihan-{$invoiceNo}.pdf");
     }
 }

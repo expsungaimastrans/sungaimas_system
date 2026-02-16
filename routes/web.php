@@ -125,23 +125,13 @@ Route::middleware(['auth'])->group(function () {
     // ================================
     // FINANCE
     // ================================
-    Route::prefix('finance')
-    ->middleware('role:owner,finance')
-    ->name('finance.')
-    ->group(function () {
-
-        Route::get('/', [FinanceController::class, 'index'])
-            ->name('index');
-
-        Route::get('/manifest/{manifest}', [FinanceController::class, 'byManifest'])
-            ->name('manifest');
-
-        Route::post('/shipments/{shipment}/update', [FinanceController::class, 'updateShipmentFinance'])
-            ->name('update');
-
-        Route::post('/invoice/generate', [FinanceController::class, 'generateInvoicePdf'])
-            ->name('invoice.generate');
+    Route::prefix('finance')->middleware('role:owner,finance')->group(function () {
+        Route::get('/', [FinanceController::class, 'index'])->name('finance.index');
+        Route::get('/manifest/{manifest}', [FinanceController::class, 'byManifest'])->name('finance.manifest');
+        Route::post('/shipments/{shipment}/update', [FinanceController::class, 'updateShipmentFinance'])->name('finance.shipment.update');
+        Route::post('/invoice/generate', [FinanceController::class, 'generateInvoicePdf'])->name('finance.invoice.generate');
     });
+    
 
 
 });
