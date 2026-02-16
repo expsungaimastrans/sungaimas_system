@@ -19,10 +19,26 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        // login pakai username
-        if (Auth::attempt(['username' => $cred['username'], 'password' => $cred['password']], $request->boolean('remember'))) {
+        if (Auth::attempt(
+            ['username' => $cred['username'], 'password' => $cred['password']],
+            $request->boolean('remember')
+        )) {
             $request->session()->regenerate();
-            return redirect()->intended('/dashboard');
+
+            $user = Auth::user();
+
+
+            // Redirect berdasarkan role
+            if ($user->role === 'owner') {
+                return redirect()->intended('/dashboard');
+            }
+
+            if ($user->role === 'finance') {
+                return redirect()->intended('/finance');
+            }
+
+            // admin (default)
+            return redirect()->intended('/shipments');
         }
 
         return back()->withErrors([
@@ -35,7 +51,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }
-
