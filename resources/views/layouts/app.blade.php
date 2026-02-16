@@ -1,36 +1,49 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title','Sungai Mas System')</title>
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+    {{-- Bootstrap --}}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    {{-- Font --}}
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
+    {{-- App CSS (jika kamu sudah punya public css sendiri) --}}
+    <style>
+        body{ font-family: Figtree, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
 
-            <!-- Page Heading -->
-            @isset($header)
-                <header class="bg-white shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endisset
+        /* style dasar biar seragam */
+        .page-title{ font-weight: 700; letter-spacing: .2px; }
+        .section-title{ font-weight: 700; margin-bottom: .5rem; }
+        .content-card-body{ padding: 18px; }
 
-            <!-- Page Content -->
-            <main>
-                {{ $slot }}
-            </main>
-        </div>
-    </body>
+        /* btn brand */
+        .btn-brand{
+            background: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+        .btn-brand:hover{ opacity: .92; color:#fff; }
+
+        .app-container{ max-width: 1200px; }
+    </style>
+
+    @stack('styles')
+</head>
+<body>
+
+{{-- Navbar --}}
+@include('partials.navbar')
+
+<main class="container app-container py-4">
+    @yield('content')
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+@stack('scripts')
+</body>
 </html>
