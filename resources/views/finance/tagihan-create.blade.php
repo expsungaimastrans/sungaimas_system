@@ -19,8 +19,9 @@
   <div class="col-md-2 d-grid"><a class="btn btn-outline-secondary" href="/finance/tagihan/create">Reset</a></div>
 </form>
 
-<form method="POST" action="/finance/tagihan">
-  @csrf
+<form method="POST" action="{{ route('finance.invoice.generate') }}">
+    @csrf
+
 
   <div class="card shadow-sm mb-3">
     <div class="card-body">

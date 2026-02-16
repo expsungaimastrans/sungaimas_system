@@ -46,7 +46,10 @@
                 <span class="badge {{ $badge }}">{{ $text }}</span>
               </td>
               <td class="text-center">
-                <a class="btn btn-sm btn-outline-primary" href="/finance/manifests/{{ $m->id }}">Kelola</a>
+                <a href="{{ route('finance.manifest', $m->id) }}" class="btn btn-sm btn-primary">
+                    Kelola
+                </a>
+                
                 <a class="btn btn-sm btn-outline-secondary" href="/manifests/{{ $m->id }}/pdf">PDF Manifest</a>
               </td>
             </tr>
