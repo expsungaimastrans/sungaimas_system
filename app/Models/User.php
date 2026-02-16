@@ -18,8 +18,13 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name', 'email', 'password', 'role'
+        'name',
+        'email',
+        'password',
+        'username',
+        'role',
     ];
+    
     
     public function isOwner(): bool   { return $this->role === 'OWNER'; }
     public function isAdmin(): bool   { return $this->role === 'ADMIN'; }

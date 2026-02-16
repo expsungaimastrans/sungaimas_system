@@ -34,12 +34,20 @@
               <li class="nav-item"><a class="nav-link" href="/finance">Finance</a></li>
             @endif
   
-            <li class="nav-item">
-              <form method="POST" action="/logout">
-                @csrf
-                <button class="btn btn-sm btn-outline-secondary">Logout</button>
-              </form>
-            </li>
+            @if(auth()->check())
+  <div class="d-flex align-items-center gap-2">
+    <span class="text-muted small">
+      {{ auth()->user()->username }} ({{ auth()->user()->role }})
+    </span>
+    <form method="POST" action="{{ route('logout') }}">
+      @csrf
+      <button class="btn btn-sm btn-outline-secondary">Logout</button>
+    </form>
+  </div>
+@else
+  <a href="{{ route('login') }}" class="btn btn-sm btn-outline-secondary">Login</a>
+@endif
+
           @endauth
   
         </ul>
