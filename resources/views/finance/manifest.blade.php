@@ -50,58 +50,6 @@
 
 {{-- FORM TAGIHAN (gabungan nota) --}}
 
-
-    <form id="invoiceForm" method="POST" action="{{ route('finance.invoice.generate') }}">
-      @csrf
-      <input type="hidden" name="manifest_id" value="{{ $manifest->id }}">
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle">
-          <thead>
-            <tr class="text-center">
-              <th style="width:40px;">
-                <input type="checkbox" id="checkAll">
-              </th>
-              <th style="width:140px;">No Nota</th>
-              <th>Penerima</th>
-              <th style="width:140px;">Tujuan</th>
-              <th style="width:110px;">Total</th>
-              <th style="width:130px;">Pembayaran</th>
-            </tr>
-          </thead>
-          <tbody>
-          @forelse($shipments as $s)
-            <tr>
-              <td class="text-center">
-                <input type="checkbox" class="ck" name="shipment_ids[]" value="{{ $s->id }}">
-              </td>
-              <td class="text-center fw-bold">{{ $s->no_nota }}</td>
-              <td>{{ $s->nama_penerima }}</td>
-              <td class="text-center">{{ $s->tujuan }}</td>
-              <td class="text-end">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
-              <td class="text-center">
-                @php
-                  $payClass = match($s->status_pembayaran){
-                    'LUNAS' => 'text-bg-success',
-                    'PIUTANG' => 'text-bg-warning',
-                    'BATAL' => 'text-bg-danger',
-                    default => 'text-bg-secondary'
-                  };
-                @endphp
-                <span class="badge {{ $payClass }}">{{ $s->status_pembayaran }}</span>
-              </td>
-            </tr>
-          @empty
-            <tr>
-              <td colspan="6" class="text-center text-muted py-4">Belum ada nota di manifest ini.</td>
-            </tr>
-          @endforelse
-          </tbody>
-        </table>
-      </div>
-    </form>
-  </div>
-</div>
-
 {{-- LIST FINANCE UPDATE --}}
 <div class="card shadow-sm">
   <div class="card-body">

@@ -140,7 +140,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/invoice/generate', [FinanceController::class, 'generateInvoicePdf'])->name('finance.invoice.generate');
     });
     
-    
+    // TAGIHAN
+Route::get('/invoices', [FinanceController::class, 'invoices'])->name('finance.invoices');
+Route::get('/invoices/data', [FinanceController::class, 'invoiceData'])->name('finance.invoices.data');
+Route::post('/invoices/store', [FinanceController::class, 'storeInvoice'])->name('finance.invoices.store');
+
+Route::get('/invoices/list', [FinanceController::class, 'listInvoices'])->name('finance.invoices.list');
+Route::get('/invoices/{invoice}', [FinanceController::class, 'showInvoice'])->name('finance.invoices.show');
+Route::post('/invoices/{invoice}/status', [FinanceController::class, 'updateInvoiceStatus'])->name('finance.invoices.status');
+Route::get('/invoices/{invoice}/pdf', [FinanceController::class, 'invoicePdf'])->name('finance.invoices.pdf');
+
 
 
 });

@@ -7,19 +7,16 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
   <div>
     <div class="page-title h4 mb-0">Buat Tagihan</div>
-    <div class="text-muted">Pilih manifest → pilih nota → generate 1 PDF tagihan</div>
+    <div class="text-muted">Pilih manifest → pilih nota → simpan tagihan</div>
   </div>
   <div class="d-flex gap-2 mt-2 mt-md-0">
     <a href="{{ route('finance.index') }}" class="btn btn-outline-secondary">Kembali</a>
+    <a href="{{ route('finance.invoices.list') }}" class="btn btn-outline-primary">Daftar Tagihan</a>
   </div>
 </div>
 
-@if(session('success'))
-  <div class="alert alert-success">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-  <div class="alert alert-danger">{{ session('error') }}</div>
-@endif
+@if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
+@if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
 
 <div class="card shadow-sm mb-3">
   <div class="card-body">
@@ -52,18 +49,26 @@
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <div>
-        <div class="fw-semibold">Daftar Nota dalam Manifest</div>
+        <div class="fw-semibold">Pilih Nota untuk Tagihan</div>
         <div class="text-muted small" id="hint">Pilih manifest terlebih dahulu.</div>
       </div>
-
-      <button class="btn btn-brand btn-sm" form="invoiceForm" type="submit" id="btnGenerate" disabled>
-        Generate PDF Tagihan
-      </button>
     </div>
 
-    <form id="invoiceForm" method="POST" action="{{ route('finance.invoice.generate') }}">
+    <form id="invoiceForm" method="POST" action="{{ route('finance.invoices.store') }}">
       @csrf
       <input type="hidden" name="manifest_id" id="manifestIdField" value="{{ $manifestId ?: '' }}">
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Ditagihkan kepada (Nama / Toko / Perusahaan)</label>
+          <input type="text" name="billed_to" class="form-control" required placeholder="Contoh: Toko Sinar Jaya / PT ABC">
+        </div>
+        <div class="col-md-6 d-flex align-items-end justify-content-end">
+          <button class="btn btn-brand" type="submit" id="btnSave" disabled>
+            Simpan Tagihan
+          </button>
+        </div>
+      </div>
 
       <div class="table-responsive">
         <table class="table table-bordered align-middle">
@@ -87,7 +92,6 @@
         </table>
       </div>
     </form>
-
   </div>
 </div>
 
@@ -96,7 +100,6 @@ function rupiah(n){
   n = Number(n || 0);
   return 'Rp ' + n.toLocaleString('id-ID');
 }
-
 function payBadge(status){
   const cls =
     status === 'LUNAS' ? 'text-bg-success' :
@@ -106,11 +109,16 @@ function payBadge(status){
   return `<span class="badge ${cls}">${status}</span>`;
 }
 
+function updateSaveEnabled(){
+  const anyChecked = !!document.querySelector('.ck:checked');
+  document.getElementById('btnSave').disabled = !anyChecked;
+}
+
 function renderRows(rows){
   const tb = document.getElementById('rows');
   if(!rows || rows.length === 0){
     tb.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada nota di manifest ini.</td></tr>`;
-    document.getElementById('btnGenerate').disabled = true;
+    document.getElementById('btnSave').disabled = true;
     document.getElementById('checkAll').disabled = true;
     return;
   }
@@ -128,15 +136,19 @@ function renderRows(rows){
     </tr>
   `).join('');
 
-  document.getElementById('btnGenerate').disabled = false;
+  document.getElementById('btnSave').disabled = true;
   document.getElementById('checkAll').disabled = false;
+
+  document.querySelectorAll('.ck').forEach(x => {
+    x.addEventListener('change', updateSaveEnabled);
+  });
 }
 
 async function loadData(){
   const mid = document.getElementById('manifestSelect').value;
   document.getElementById('manifestIdField').value = mid;
-  const hint = document.getElementById('hint');
 
+  const hint = document.getElementById('hint');
   if(!mid){
     hint.textContent = 'Pilih manifest terlebih dahulu.';
     renderRows([]);
@@ -148,8 +160,8 @@ async function loadData(){
   const res = await fetch(`{{ route('finance.invoices.data') }}?manifest_id=${encodeURIComponent(mid)}`, {
     headers: { 'Accept': 'application/json' }
   });
-  const data = await res.json().catch(()=>({ok:false}));
 
+  const data = await res.json().catch(()=>({ok:false}));
   if(!res.ok || !data.ok){
     hint.textContent = 'Gagal memuat data.';
     renderRows([]);
@@ -166,17 +178,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     loadData();
   });
 
-  document.getElementById('manifestSelect').addEventListener('change', ()=>{
-    loadData();
+  document.getElementById('manifestSelect').addEventListener('change', loadData);
+
+  document.getElementById('checkAll').addEventListener('change', (e)=>{
+    document.querySelectorAll('.ck').forEach(x => x.checked = e.target.checked);
+    updateSaveEnabled();
   });
 
-  document.addEventListener('change', (e)=>{
-    if(e.target && e.target.id === 'checkAll'){
-      document.querySelectorAll('.ck').forEach(x => x.checked = e.target.checked);
-    }
-  });
-
-  // auto load kalau manifestId sudah ada
   loadData();
 });
 </script>

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Manifest;
+use App\Models\ManifestItem;
 use App\Models\Shipment;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -11,17 +14,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class FinanceController extends Controller
 {
-    /**
-     * Landing Finance: list manifest + badge unpaid
-     */
+    // =========================
+    // FINANCE HOME (manifest list)
+    // =========================
     public function index()
     {
         $manifests = Manifest::orderBy('created_at', 'desc')->paginate(10);
 
-        // unpaidMap: manifest_id => { total, unpaid }
-        $stats = Shipment::selectRaw('manifest_id, COUNT(*) as total, SUM(CASE WHEN status_pembayaran <> "LUNAS" THEN 1 ELSE 0 END) as unpaid')
-            ->whereNotNull('manifest_id')
-            ->groupBy('manifest_id')
+        // unpaid label per manifest (hitung via manifest_items -> shipments)
+        $stats = DB::table('manifest_items as mi')
+            ->join('shipments as s', 's.id', '=', 'mi.shipment_id')
+            ->selectRaw('mi.manifest_id as manifest_id, COUNT(*) as total, SUM(CASE WHEN s.status_pembayaran <> "LUNAS" THEN 1 ELSE 0 END) as unpaid')
+            ->groupBy('mi.manifest_id')
             ->get()
             ->keyBy('manifest_id');
 
@@ -31,13 +35,19 @@ class FinanceController extends Controller
         ]);
     }
 
-    /**
-     * Kelola finance per manifest (detail)
-     */
+    // =========================
+    // FINANCE BY MANIFEST (kelola)
+    // =========================
     public function byManifest(Manifest $manifest)
     {
+        // Ambil shipment_id dari manifest_items
+        $ids = ManifestItem::where('manifest_id', $manifest->id)
+            ->whereNotNull('shipment_id')
+            ->pluck('shipment_id')
+            ->toArray();
+
         $shipments = Shipment::with('items')
-            ->where('manifest_id', $manifest->id)
+            ->whereIn('id', $ids)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -47,9 +57,9 @@ class FinanceController extends Controller
         return view('finance.manifest', compact('manifest', 'shipments', 'total', 'unpaid'));
     }
 
-    /**
-     * Update finance shipment (status, tipe bayar, bukti bayar)
-     */
+    // =========================
+    // UPDATE FINANCE SHIPMENT
+    // =========================
     public function updateShipmentFinance(Request $request, Shipment $shipment)
     {
         $data = $request->validate([
@@ -58,31 +68,23 @@ class FinanceController extends Controller
             'bukti_bayar' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
 
-        // Rule: jika COT dan status LUNAS -> wajib bukti
+        // Rule: COT + LUNAS wajib bukti
         $needProof = ($data['tipe_bayar'] === 'COT' && $data['status_pembayaran'] === 'LUNAS');
-
         if ($needProof && !$request->hasFile('bukti_bayar') && empty($shipment->bukti_bayar_path)) {
             return back()->with('error', 'COT + LUNAS wajib upload bukti bayar.');
         }
 
         return DB::transaction(function () use ($request, $shipment, $data) {
 
-            // Upload bukti jika ada
             if ($request->hasFile('bukti_bayar')) {
-                $file = $request->file('bukti_bayar');
-                $path = $file->store('bukti-bayar', 'public'); // storage/app/public/bukti-bayar/...
+                $path = $request->file('bukti_bayar')->store('bukti-bayar', 'public');
                 $shipment->bukti_bayar_path = $path;
             }
 
             $shipment->tipe_bayar = $data['tipe_bayar'];
             $shipment->status_pembayaran = $data['status_pembayaran'];
 
-            // paid_at otomatis jika lunas
-            if ($data['status_pembayaran'] === 'LUNAS') {
-                $shipment->paid_at = now();
-            } else {
-                $shipment->paid_at = null;
-            }
+            $shipment->paid_at = ($data['status_pembayaran'] === 'LUNAS') ? now() : null;
 
             $shipment->save();
 
@@ -90,20 +92,19 @@ class FinanceController extends Controller
         });
     }
 
-    /**
-     * ✅ PAGE LUAR: Buat Tagihan
-     * - pilih manifest, lalu tampilkan list nota (via AJAX table)
-     */
+    // =========================
+    // ✅ PAGE BUAT TAGIHAN (luar kelola)
+    // =========================
     public function invoices(Request $request)
     {
         $manifestId = (int)($request->query('manifest_id', 0));
-
         $manifests = Manifest::orderBy('created_at', 'desc')->limit(200)->get();
 
-        // label xx/xx unpaid per manifest
-        $stats = Shipment::selectRaw('manifest_id, COUNT(*) as total, SUM(CASE WHEN status_pembayaran <> "LUNAS" THEN 1 ELSE 0 END) as unpaid')
-            ->whereNotNull('manifest_id')
-            ->groupBy('manifest_id')
+        // label unpaid per manifest via join manifest_items -> shipments
+        $stats = DB::table('manifest_items as mi')
+            ->join('shipments as s', 's.id', '=', 'mi.shipment_id')
+            ->selectRaw('mi.manifest_id as manifest_id, COUNT(*) as total, SUM(CASE WHEN s.status_pembayaran <> "LUNAS" THEN 1 ELSE 0 END) as unpaid')
+            ->groupBy('mi.manifest_id')
             ->get()
             ->keyBy('manifest_id');
 
@@ -114,16 +115,23 @@ class FinanceController extends Controller
         ]);
     }
 
-    /**
-     * Data AJAX untuk tabel invoice berdasarkan manifest
-     */
+    // ✅ DATA untuk table nota (fix: pakai manifest_items)
     public function invoiceData(Request $request)
     {
         $manifestId = (int)$request->query('manifest_id', 0);
         if (!$manifestId) return response()->json(['ok'=>true,'rows'=>[]]);
 
+        $shipmentIds = ManifestItem::where('manifest_id', $manifestId)
+            ->whereNotNull('shipment_id')
+            ->pluck('shipment_id')
+            ->toArray();
+
+        if (count($shipmentIds) === 0) {
+            return response()->json(['ok'=>true,'rows'=>[]]);
+        }
+
         $shipments = Shipment::with('items')
-            ->where('manifest_id', $manifestId)
+            ->whereIn('id', $shipmentIds)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -141,41 +149,136 @@ class FinanceController extends Controller
         return response()->json(['ok'=>true,'rows'=>$rows]);
     }
 
-    /**
-     * Generate PDF tagihan gabungan (rekap beberapa nota)
-     */
-    public function generateInvoicePdf(Request $request)
+    // =========================
+    // ✅ SIMPAN TAGIHAN (create invoice + items)
+    // =========================
+    public function storeInvoice(Request $request)
     {
         $data = $request->validate([
-            'manifest_id' => 'required|numeric',
-            'shipment_ids' => 'required|array|min:1',
-            'shipment_ids.*' => 'numeric',
+            'manifest_id'   => 'required|numeric',
+            'billed_to'     => 'required|string|max:120',
+            'shipment_ids'  => 'required|array|min:1',
+            'shipment_ids.*'=> 'numeric',
         ]);
 
         $manifestId = (int)$data['manifest_id'];
+        $billedTo = trim($data['billed_to']);
         $ids = array_map('intval', $data['shipment_ids']);
 
-        // Ambil shipments yg benar-benar ada di manifest tsb
-        $shipments = Shipment::with('items')
-            ->where('manifest_id', $manifestId)
-            ->whereIn('id', $ids)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        return DB::transaction(function () use ($manifestId, $billedTo, $ids) {
 
-        if ($shipments->count() === 0) {
-            return back()->with('error', 'Tidak ada nota valid untuk dibuat tagihan.');
+            // Validasi shipments harus benar-benar ada di manifest ini (via manifest_items)
+            $validIds = ManifestItem::where('manifest_id', $manifestId)
+                ->whereIn('shipment_id', $ids)
+                ->pluck('shipment_id')
+                ->toArray();
+
+            if (count($validIds) === 0) {
+                return back()->with('error', 'Nota yang dipilih tidak valid untuk manifest ini.');
+            }
+
+            $shipments = Shipment::whereIn('id', $validIds)->get();
+            $grandTotal = (float)$shipments->sum('harga_total');
+
+            // nomor tagihan per subject (billed_to)
+            $invoiceNo = $this->generateInvoiceNo($billedTo);
+
+            $invoice = Invoice::create([
+                'invoice_no' => $invoiceNo,
+                'manifest_id' => $manifestId,
+                'billed_to' => $billedTo,
+                'status' => 'BELUM_DITAGIH', // default
+                'total' => $grandTotal,
+            ]);
+
+            foreach ($shipments as $s) {
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'shipment_id' => $s->id,
+                    'amount' => (float)$s->harga_total,
+                ]);
+            }
+
+            return redirect()->route('finance.invoices.list')
+                ->with('success', "Tagihan dibuat: {$invoice->invoice_no}");
+        });
+    }
+
+    private function generateInvoiceNo(string $billedTo): string
+    {
+        // slug subject biar rapi
+        $slug = Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]+/', '-', $billedTo), 0, 12));
+        if (!$slug) $slug = 'CUST';
+
+        // urut per subject (billed_to) sepanjang waktu
+        $seq = (int)Invoice::where('billed_to', $billedTo)->count() + 1;
+
+        // format: INV-{SLUG}-{0001}-{YYMM}
+        return 'INV-' . $slug . '-' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT) . '-' . now()->format('ym');
+    }
+
+    // =========================
+    // ✅ DAFTAR TAGIHAN
+    // =========================
+    public function listInvoices()
+    {
+        $invoices = Invoice::withCount('items')
+            ->orderBy('created_at', 'desc')
+            ->paginate(12);
+
+        return view('finance.invoices_list', compact('invoices'));
+    }
+
+    public function showInvoice(Invoice $invoice)
+    {
+        $invoice->load(['items.shipment']);
+        return view('finance.invoice_show', compact('invoice'));
+    }
+
+    // Update status tagihan (LUNAS wajib bukti)
+    public function updateInvoiceStatus(Request $request, Invoice $invoice)
+    {
+        $data = $request->validate([
+            'status' => 'required|in:BELUM_DITAGIH,MENUNGGU_PEMBAYARAN,LUNAS',
+            'proof'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        ]);
+
+        $needProof = ($data['status'] === 'LUNAS');
+
+        if ($needProof && !$request->hasFile('proof') && empty($invoice->payment_proof_path)) {
+            return back()->with('error', 'Jika status LUNAS wajib upload bukti pembayaran.');
         }
 
-        $grandTotal = (float)$shipments->sum('harga_total');
+        return DB::transaction(function () use ($request, $invoice, $data) {
 
-        // nomor invoice sederhana
-        $invoiceNo = 'INV-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4));
+            if ($request->hasFile('proof')) {
+                $path = $request->file('proof')->store('bukti-tagihan', 'public');
+                $invoice->payment_proof_path = $path;
+            }
 
-        $pdf = Pdf::loadView('finance.invoice_pdf', compact('shipments','grandTotal','invoiceNo'))
-            ->setPaper('A4', 'portrait');
+            $invoice->status = $data['status'];
+            $invoice->paid_at = ($data['status'] === 'LUNAS') ? now() : null;
+            $invoice->save();
 
-        // aman dari karakter / \
-        $safe = str_replace(['/', '\\'], '-', $invoiceNo);
+            return back()->with('success', 'Status tagihan diupdate.');
+        });
+    }
+
+    // PDF Tagihan (per invoice)
+    public function invoicePdf(Invoice $invoice)
+    {
+        $invoice->load(['items.shipment.items']);
+
+        $shipments = $invoice->items->map->shipment;
+        $grandTotal = (float)$invoice->total;
+
+        $pdf = Pdf::loadView('finance.invoice_pdf', [
+            'invoice' => $invoice,
+            'shipments' => $shipments,
+            'grandTotal' => $grandTotal,
+        ])->setPaper('A4', 'portrait');
+
+        $safe = str_replace(['/', '\\'], '-', $invoice->invoice_no);
 
         return $pdf->stream("tagihan-{$safe}.pdf");
     }

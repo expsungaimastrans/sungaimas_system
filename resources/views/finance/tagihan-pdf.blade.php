@@ -2,16 +2,17 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Tagihan {{ $invoiceNo }}</title>
+<title>Tagihan {{ $invoice->invoice_no }}</title>
 <style>
   body { font-family:"Times New Roman", serif; font-size: 11px; }
   table { width:100%; border-collapse: collapse; }
-  .line td { border-bottom:1px solid #000; }
-  .box td, .box th { border:1px solid #000; padding:4px; }
+  .line td { border-bottom:1px solid #000; padding:4px 0; }
+  .box td, .box th { border:1px solid #000; padding:4px; vertical-align:top; }
   .center { text-align:center; }
   .right { text-align:right; }
   .bold { font-weight:bold; }
   .small { font-size:10px; }
+  .muted { color:#444; }
 </style>
 </head>
 <body>
@@ -23,7 +24,12 @@
       <table>
         <tr>
           <td width="30%" valign="top">
-            <img src="{{ public_path('logo.png') }}" width="80">
+            @php
+              $logoPath = public_path('logo.png');
+            @endphp
+            @if(file_exists($logoPath))
+              <img src="{{ $logoPath }}" width="80" alt="Logo">
+            @endif
           </td>
           <td width="70%" valign="top">
             <strong>Sungai Mas Trans</strong><br>
@@ -38,12 +44,12 @@
 
     <td width="35%" class="center">
       <div style="font-size:16px; font-weight:bold;">TAGIHAN</div>
-      <div class="small">Rekap beberapa nota pengiriman</div>
+      <div class="small muted">Rekap beberapa nota pengiriman</div>
     </td>
 
     <td width="20%" class="right">
-      <strong>{{ $invoiceNo }}</strong><br>
-      Tanggal: {{ now()->format('d F Y') }}
+      <strong>{{ $invoice->invoice_no }}</strong><br>
+      Tanggal: {{ ($invoice->created_at ?? now())->format('d F Y') }}
     </td>
   </tr>
 </table>
@@ -53,6 +59,7 @@
 <table class="line">
   <tr>
     <td width="70%">
+      <strong>Ditagihkan Kepada:</strong> {{ $invoice->billed_to }}<br>
       <strong>Perihal:</strong> Tagihan Pengiriman (Rekap Nota)<br>
       <strong>Jumlah Nota:</strong> {{ $shipments->count() }} Nota
     </td>
@@ -87,7 +94,7 @@
         <td>{{ $s->nama_penerima }}</td>
         <td class="center">{{ $s->tujuan }}</td>
         <td class="center">{{ $s->status_pembayaran }}</td>
-        <td class="right">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
+        <td class="right">Rp {{ number_format((float)$s->harga_total,0,',','.') }}</td>
       </tr>
     @endforeach
     <tr>
@@ -99,7 +106,7 @@
 
 <br>
 
-{{-- DETAIL BARANG PER NOTA (opsional, tapi berguna) --}}
+{{-- DETAIL BARANG PER NOTA --}}
 @foreach($shipments as $s)
   <div style="margin-top:10px;">
     <div class="bold">Detail Nota: {{ $s->no_nota }} - {{ $s->nama_penerima }} ({{ $s->tujuan }})</div>
