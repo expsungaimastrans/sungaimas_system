@@ -98,7 +98,6 @@ class FinanceController extends Controller
 // ==========================================================
 public function invoices(Request $request)
 {
-    // opsi dropdown tujuan untuk filter
     $tujuanOptions = Shipment::query()
         ->select('tujuan')
         ->whereNotNull('tujuan')
@@ -113,6 +112,7 @@ public function invoices(Request $request)
 }
 
 
+
     // ✅ DATA untuk table nota (fix: pakai manifest_items)
     // ==========================================================
 // ✅ DATA untuk table nota (filter + exclude yang sudah masuk invoice)
@@ -125,36 +125,24 @@ public function invoiceData(Request $request)
     $sp       = trim((string)$request->query('status_pembayaran', ''));
 
     $rows = Shipment::query()
-        ->select(
-            'shipments.id',
-            'shipments.no_nota',
-            'shipments.nama_penerima',
-            'shipments.tujuan',
-            'shipments.status_pembayaran',
-            'shipments.harga_total',
-            'shipments.manifest_id'
-        )
-        // ✅ (opsional) hanya nota yang sudah masuk manifest
+        ->select('shipments.id','shipments.no_nota','shipments.nama_penerima','shipments.tujuan','shipments.status_pembayaran','shipments.harga_total')
         ->whereNotNull('shipments.manifest_id')
-
-        // ✅ exclude yang sudah pernah masuk invoice_items
-        ->leftJoin('invoice_items as ii', 'ii.shipment_id', '=', 'shipments.id')
+        ->leftJoin('invoice_items as ii','ii.shipment_id','=','shipments.id')
         ->whereNull('ii.shipment_id')
-
-        ->when($q, function ($query) use ($q) {
-            $query->where(function ($qq) use ($q) {
-                $qq->where('shipments.no_nota', 'like', "%{$q}%")
-                   ->orWhere('shipments.nama_penerima', 'like', "%{$q}%")
-                   ->orWhere('shipments.tujuan', 'like', "%{$q}%");
+        ->when($q, function($query) use ($q){
+            $query->where(function($qq) use ($q){
+                $qq->where('shipments.no_nota','like',"%{$q}%")
+                   ->orWhere('shipments.nama_penerima','like',"%{$q}%")
+                   ->orWhere('shipments.tujuan','like',"%{$q}%");
             });
         })
-        ->when($tujuan, fn($query) => $query->where('shipments.tujuan', $tujuan))
-        ->when($penerima, fn($query) => $query->where('shipments.nama_penerima', 'like', "%{$penerima}%"))
-        ->when($sp, fn($query) => $query->where('shipments.status_pembayaran', $sp))
+        ->when($tujuan, fn($query)=> $query->where('shipments.tujuan', $tujuan))
+        ->when($penerima, fn($query)=> $query->where('shipments.nama_penerima','like',"%{$penerima}%"))
+        ->when($sp, fn($query)=> $query->where('shipments.status_pembayaran', $sp))
         ->orderByDesc('shipments.created_at')
         ->limit(200)
         ->get()
-        ->map(function ($s) {
+        ->map(function($s){
             return [
                 'id' => (int)$s->id,
                 'no_nota' => $s->no_nota,
@@ -162,12 +150,12 @@ public function invoiceData(Request $request)
                 'tujuan' => $s->tujuan,
                 'status_pembayaran' => $s->status_pembayaran,
                 'total' => (float)$s->harga_total,
-                'manifest_id' => $s->manifest_id,
             ];
         });
 
-    return response()->json(['ok' => true, 'rows' => $rows]);
+    return response()->json(['ok'=>true,'rows'=>$rows]);
 }
+
 
     // =========================
     // ✅ SIMPAN TAGIHAN (create invoice + items)
@@ -178,9 +166,9 @@ public function invoiceData(Request $request)
 public function storeInvoice(Request $request)
 {
     $data = $request->validate([
-        'billed_to'      => 'required|string|max:120',
-        'shipment_ids'   => 'required|array|min:1',
-        'shipment_ids.*' => 'numeric',
+        'billed_to'     => 'required|string|max:120',
+        'shipment_ids'  => 'required|array|min:1',
+        'shipment_ids.*'=> 'numeric',
     ]);
 
     $billedTo = trim($data['billed_to']);
@@ -188,11 +176,10 @@ public function storeInvoice(Request $request)
 
     return DB::transaction(function () use ($billedTo, $ids) {
 
-        // ambil shipment, validasi belum ada di invoice_items
         $shipments = Shipment::query()
             ->whereIn('id', $ids)
-            ->whereNotNull('manifest_id') // kalau mau boleh tanpa manifest, hapus baris ini
-            ->leftJoin('invoice_items as ii', 'ii.shipment_id', '=', 'shipments.id')
+            ->whereNotNull('manifest_id')
+            ->leftJoin('invoice_items as ii','ii.shipment_id','=','shipments.id')
             ->whereNull('ii.shipment_id')
             ->select('shipments.*')
             ->lockForUpdate()
@@ -207,7 +194,7 @@ public function storeInvoice(Request $request)
 
         $invoice = Invoice::create([
             'invoice_no' => $invoiceNo,
-            'manifest_id' => null, // tagihan lintas manifest bisa
+            'manifest_id' => null,
             'billed_to' => $billedTo,
             'status' => 'BELUM_DITAGIH',
             'total' => $grandTotal,
@@ -225,6 +212,7 @@ public function storeInvoice(Request $request)
             ->with('success', "Tagihan dibuat: {$invoice->invoice_no}");
     });
 }
+
 
 
     private function generateInvoiceNo(string $billedTo): string
