@@ -282,4 +282,32 @@ class FinanceController extends Controller
 
         return $pdf->stream("tagihan-{$safe}.pdf");
     }
+
+    public function manifestShipmentsJson(Manifest $manifest)
+{
+    // Ambil shipments via manifest_items agar pasti sesuai manifest
+    $shipments = Shipment::query()
+        ->select(
+            'shipments.id',
+            'shipments.no_nota',
+            'shipments.nama_penerima',
+            'shipments.tujuan',
+            'shipments.status_pembayaran',
+            'shipments.harga_total'
+        )
+        ->join('manifest_items', 'manifest_items.shipment_id', '=', 'shipments.id')
+        ->where('manifest_items.manifest_id', $manifest->id)
+        ->orderBy('shipments.created_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'ok' => true,
+        'manifest_id' => $manifest->id,
+        'count' => $shipments->count(),
+        'data' => $shipments,
+    ]);
+}
+
+
+
 }
