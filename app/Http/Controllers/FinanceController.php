@@ -125,21 +125,19 @@ public function invoiceData(Request $request)
     $sp       = trim((string)$request->query('status_pembayaran', ''));
 
     $rows = Shipment::query()
-        ->select('shipments.id','shipments.no_nota','shipments.nama_penerima','shipments.tujuan','shipments.status_pembayaran','shipments.harga_total')
-        ->whereNotNull('shipments.manifest_id')
-        ->leftJoin('invoice_items as ii','ii.shipment_id','=','shipments.id')
-        ->whereNull('ii.shipment_id')
+        ->whereNotNull('manifest_id') // hanya yang sudah masuk manifest
+        ->whereDoesntHave('invoiceItems') // ✅ ini lebih aman daripada leftJoin
         ->when($q, function($query) use ($q){
             $query->where(function($qq) use ($q){
-                $qq->where('shipments.no_nota','like',"%{$q}%")
-                   ->orWhere('shipments.nama_penerima','like',"%{$q}%")
-                   ->orWhere('shipments.tujuan','like',"%{$q}%");
+                $qq->where('no_nota','like',"%{$q}%")
+                   ->orWhere('nama_penerima','like',"%{$q}%")
+                   ->orWhere('tujuan','like',"%{$q}%");
             });
         })
-        ->when($tujuan, fn($query)=> $query->where('shipments.tujuan', $tujuan))
-        ->when($penerima, fn($query)=> $query->where('shipments.nama_penerima','like',"%{$penerima}%"))
-        ->when($sp, fn($query)=> $query->where('shipments.status_pembayaran', $sp))
-        ->orderByDesc('shipments.created_at')
+        ->when($tujuan, fn($query)=> $query->where('tujuan', $tujuan))
+        ->when($penerima, fn($query)=> $query->where('nama_penerima','like',"%{$penerima}%"))
+        ->when($sp, fn($query)=> $query->where('status_pembayaran', $sp))
+        ->orderByDesc('created_at')
         ->limit(200)
         ->get()
         ->map(function($s){

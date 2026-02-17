@@ -14,7 +14,10 @@ class InvoiceItem extends Model
     }
 
     public function shipment()
-    {
-        return $this->belongsTo(Shipment::class);
-    }
+{
+    return $this->belongsTo(\App\Models\Shipment::class, 'shipment_id');
+}
+
+    
+
 }

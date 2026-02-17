@@ -47,6 +47,11 @@ public function logs()
     return $this->hasMany(\App\Models\ShipmentLog::class)->orderBy('logged_at','desc');
 }
 
+public function invoiceItems()
+{
+    return $this->hasMany(\App\Models\InvoiceItem::class, 'shipment_id');
+}
+
 
 }
 
