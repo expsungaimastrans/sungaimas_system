@@ -157,7 +157,8 @@ async function loadShipments(){
   loadingText.textContent = 'Memuat data...';
   rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>`;
 
-  const url = `/finance/manifest/${encodeURIComponent(manifestId)}/shipments`;
+  const url = `{{ url('/finance/manifest') }}/${encodeURIComponent(manifestId)}/shipments`;
+
 
   const res = await fetch(url, {
     method: 'GET',
