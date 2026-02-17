@@ -13,38 +13,29 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $cred = $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
-        ]);
+{
+    $cred = $request->validate([
+        'username' => 'required|string',
+        'password' => 'required|string',
+    ]);
 
-        if (Auth::attempt(
-            ['username' => $cred['username'], 'password' => $cred['password']],
-            $request->boolean('remember')
-        )) {
-            $request->session()->regenerate();
+    if (Auth::attempt(
+        ['username' => $cred['username'], 'password' => $cred['password']],
+        $request->boolean('remember')
+    )) {
+        $request->session()->regenerate();
 
-            $user = Auth::user();
+        $user = Auth::user();
 
-
-            // Redirect berdasarkan role
-            if ($user->role === 'owner') {
-                return redirect()->intended('/dashboard');
-            }
-
-            if ($user->role === 'finance') {
-                return redirect()->intended('/finance');
-            }
-
-            // admin (default)
-            return redirect()->intended('/shipments');
-        }
-
-        return back()->withErrors([
-            'username' => 'Username / password salah',
-        ])->onlyInput('username');
+        if ($user->role === 'owner')   return redirect()->intended('/dashboard');
+        if ($user->role === 'finance') return redirect()->intended('/finance');
+        return redirect()->intended('/shipments'); // admin
     }
+
+    return back()->withErrors([
+        'username' => 'Username / password salah',
+    ])->onlyInput('username');
+}
 
     public function logout(Request $request)
     {
