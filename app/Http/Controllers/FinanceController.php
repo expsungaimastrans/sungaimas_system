@@ -125,8 +125,16 @@ public function invoiceData(Request $request)
     $sp       = trim((string)$request->query('status_pembayaran', ''));
 
     $rows = Shipment::query()
-        ->whereNotNull('manifest_id') // hanya yang sudah masuk manifest
-        ->whereDoesntHave('invoiceItems') // ✅ ini lebih aman daripada leftJoin
+        // hanya nota yang sudah masuk manifest
+        ->whereNotNull('manifest_id')
+
+        // exclude yang sudah masuk invoice_items
+        ->whereNotExists(function($q){
+            $q->select(DB::raw(1))
+              ->from('invoice_items')
+              ->whereColumn('invoice_items.shipment_id', 'shipments.id');
+        })
+
         ->when($q, function($query) use ($q){
             $query->where(function($qq) use ($q){
                 $qq->where('no_nota','like',"%{$q}%")
@@ -134,9 +142,11 @@ public function invoiceData(Request $request)
                    ->orWhere('tujuan','like',"%{$q}%");
             });
         })
+
         ->when($tujuan, fn($query)=> $query->where('tujuan', $tujuan))
         ->when($penerima, fn($query)=> $query->where('nama_penerima','like',"%{$penerima}%"))
         ->when($sp, fn($query)=> $query->where('status_pembayaran', $sp))
+
         ->orderByDesc('created_at')
         ->limit(200)
         ->get()
@@ -151,8 +161,12 @@ public function invoiceData(Request $request)
             ];
         });
 
-    return response()->json(['ok'=>true,'rows'=>$rows]);
+    return response()->json([
+        'ok' => true,
+        'rows' => $rows
+    ]);
 }
+
 
 
     // =========================
