@@ -194,58 +194,42 @@ function updateSaveEnabled(){
   document.getElementById('btnSave').disabled = !anyChecked;
 }
 
-function renderRows(rows){
-  const tb = document.getElementById('rows');
-  const hintEmpty = document.getElementById('hintEmpty');
+function renderRows(data){
+  rowsEl.innerHTML = '';
 
-  if(!rows || rows.length === 0){
-    tb.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada nota.</td></tr>`;
-    hintEmpty.style.display = 'block';
-    document.getElementById('rowsInfo').textContent = '0 nota';
-    document.getElementById('checkAll').disabled = true;
-    selected.clear();
-    rebuildSelectedInputs();
+  if(!data || data.length === 0){
+    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada nota di manifest ini.</td></tr>`;
+    selectedInfo.textContent = '0 nota dipilih';
     return;
   }
 
-  hintEmpty.style.display = 'none';
-  document.getElementById('rowsInfo').textContent = `${rows.length} nota`;
-  document.getElementById('checkAll').disabled = false;
+  data.forEach(s => {
+    const tr = document.createElement('tr');
 
-  tb.innerHTML = rows.map(r => {
-    const checked = selected.has(String(r.id)) ? 'checked' : '';
-    return `
-      <tr data-id="${r.id}" data-total="${r.total}">
-        <td class="text-center">
-          <input type="checkbox" class="ck" ${checked} value="${r.id}">
-        </td>
-        <td class="text-center fw-bold">${r.no_nota ?? '-'}</td>
-        <td>${r.penerima || '-'}</td>
-        <td class="text-center">${r.tujuan || '-'}</td>
-        <td class="text-center">${payBadge(r.status_pembayaran || 'BELUM_BAYAR')}</td>
-        <td class="text-end">${rupiah(r.total)}</td>
-      </tr>
+    const noNota   = s.no_nota ?? '-';
+    const penerima = s.nama_penerima ?? s.penerima ?? '-';
+    const tujuan   = s.tujuan ?? '-';
+    const status   = (s.status_pembayaran ?? 'BELUM_BAYAR');
+    const total    = (s.harga_total ?? s.total ?? 0);
+
+    tr.innerHTML = `
+      <td class="text-center">
+        <input type="checkbox" class="rowCheck" name="shipment_ids[]" value="${s.id}">
+      </td>
+      <td class="text-center fw-semibold">${noNota}</td>
+      <td>${penerima}</td>
+      <td class="text-center">${tujuan}</td>
+      <td class="text-center">
+        <span class="badge ${badgeClass(status)}">${status}</span>
+      </td>
+      <td class="text-end">${rupiah(total)}</td>
     `;
-  }).join('');
-
-  // bind checkbox events
-  document.querySelectorAll('.ck').forEach(chk => {
-    chk.addEventListener('change', (e) => {
-      const tr = e.target.closest('tr');
-      const id = String(tr.dataset.id);
-      const total = Number(tr.dataset.total || 0);
-
-      if(e.target.checked){
-        selected.set(id, total);
-      }else{
-        selected.delete(id);
-      }
-      rebuildSelectedInputs();
-    });
+    rowsEl.appendChild(tr);
   });
 
-  rebuildSelectedInputs();
+  bindCheckEvents();
 }
+
 
 async function loadData(){
   const q = document.getElementById('f_q').value.trim();
@@ -256,7 +240,7 @@ async function loadData(){
   const hint = document.getElementById('hint');
   hint.textContent = 'Memuat data...';
 
-  const url = new URL(`{{ route('finance.invoices.data') }}`, window.location.origin);
+  const url = `{{ url('/finance/manifest') }}/${encodeURIComponent(manifestId)}/shipments`;
   if(q) url.searchParams.set('q', q);
   if(tujuan) url.searchParams.set('tujuan', tujuan);
   if(penerima) url.searchParams.set('penerima', penerima);

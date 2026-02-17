@@ -124,48 +124,46 @@ public function invoiceData(Request $request)
     $penerima = trim((string)$request->query('penerima', ''));
     $sp       = trim((string)$request->query('status_pembayaran', ''));
 
-    $rows = Shipment::query()
-        // hanya nota yang sudah masuk manifest
-        ->whereNotNull('manifest_id')
-
-        // exclude yang sudah masuk invoice_items
+    $shipments = Shipment::query()
+        ->whereNotNull('shipments.manifest_id') // hanya yang sudah masuk manifest
         ->whereNotExists(function($q){
             $q->select(DB::raw(1))
               ->from('invoice_items')
               ->whereColumn('invoice_items.shipment_id', 'shipments.id');
         })
-
         ->when($q, function($query) use ($q){
             $query->where(function($qq) use ($q){
-                $qq->where('no_nota','like',"%{$q}%")
-                   ->orWhere('nama_penerima','like',"%{$q}%")
-                   ->orWhere('tujuan','like',"%{$q}%");
+                $qq->where('shipments.no_nota','like',"%{$q}%")
+                   ->orWhere('shipments.nama_pengirim','like',"%{$q}%")
+                   ->orWhere('shipments.nama_penerima','like',"%{$q}%")
+                   ->orWhere('shipments.tujuan','like',"%{$q}%");
             });
         })
-
-        ->when($tujuan, fn($query)=> $query->where('tujuan', $tujuan))
-        ->when($penerima, fn($query)=> $query->where('nama_penerima','like',"%{$penerima}%"))
-        ->when($sp, fn($query)=> $query->where('status_pembayaran', $sp))
-
-        ->orderByDesc('created_at')
+        ->when($tujuan, fn($query)=> $query->where('shipments.tujuan', $tujuan))
+        ->when($penerima, fn($query)=> $query->where('shipments.nama_penerima','like',"%{$penerima}%"))
+        ->when($sp, fn($query)=> $query->where('shipments.status_pembayaran', $sp))
+        ->orderByDesc('shipments.created_at')
         ->limit(200)
-        ->get()
-        ->map(function($s){
-            return [
-                'id' => (int)$s->id,
-                'no_nota' => $s->no_nota,
-                'penerima' => $s->nama_penerima,
-                'tujuan' => $s->tujuan,
-                'status_pembayaran' => $s->status_pembayaran,
-                'total' => (float)$s->harga_total,
-            ];
-        });
+        ->get();
+
+    $rows = $shipments->map(function($s){
+        return [
+            'id' => (int)$s->id,
+            'no_nota' => $s->no_nota,
+            'penerima' => $s->nama_penerima,
+            'tujuan' => $s->tujuan,
+            'status_pembayaran' => $s->status_pembayaran,
+            'total' => (float)$s->harga_total,
+            'manifest_id' => $s->manifest_id,
+        ];
+    })->values();
 
     return response()->json([
         'ok' => true,
         'rows' => $rows
     ]);
 }
+
 
 
 
@@ -308,10 +306,15 @@ public function storeInvoice(Request $request)
 
     public function manifestShipmentsJson(Manifest $manifest)
 {
-    // Ambil shipments yang ada di manifest via manifest_items.shipment_id
-    // dan join ke shipments agar dapat no_nota, penerima, tujuan, status, total, dll.
     $shipments = Shipment::query()
-        ->select('shipments.id','shipments.no_nota','shipments.nama_penerima','shipments.tujuan','shipments.status_pembayaran','shipments.harga_total')
+        ->select(
+            'shipments.id',
+            'shipments.no_nota',
+            'shipments.nama_penerima',
+            'shipments.tujuan',
+            'shipments.status_pembayaran',
+            'shipments.harga_total'
+        )
         ->join('manifest_items','manifest_items.shipment_id','=','shipments.id')
         ->where('manifest_items.manifest_id', $manifest->id)
         ->orderBy('shipments.created_at','desc')
@@ -324,6 +327,7 @@ public function storeInvoice(Request $request)
         'data' => $shipments,
     ]);
 }
+
 
 
 

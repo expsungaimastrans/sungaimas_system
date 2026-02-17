@@ -127,6 +127,10 @@ Route::middleware(['auth'])->group(function () {
 // ================================
 Route::prefix('finance')->middleware(['auth','role:owner,finance'])->group(function () {
 
+    Route::get('/finance/manifest/{manifest}/shipments', [FinanceController::class, 'manifestShipmentsJson'])
+  ->name('finance.manifest.shipments');
+
+
     Route::get('/', [FinanceController::class, 'index'])->name('finance.index');
 
     // ✅ PAGE: daftar tagihan
