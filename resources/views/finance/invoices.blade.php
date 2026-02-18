@@ -235,32 +235,37 @@ function renderRows(data){
 
 
 async function loadData(){
-  const q = document.getElementById('f_q').value.trim();
-  const tujuan = document.getElementById('f_tujuan').value;
-  const penerima = document.getElementById('f_penerima').value.trim();
-  const sp = document.getElementById('f_sp').value;
+  const manifestId = manifestSel.value;   // ✅ FIX DI SINI
+  manifestHidden.value = manifestId;
 
-  const hint = document.getElementById('hint');
-  hint.textContent = 'Memuat data...';
-
-  const url = `{{ url('/finance/manifest') }}/${encodeURIComponent(manifestId)}/shipments`;
-  if(q) url.searchParams.set('q', q);
-  if(tujuan) url.searchParams.set('tujuan', tujuan);
-  if(penerima) url.searchParams.set('penerima', penerima);
-  if(sp) url.searchParams.set('status_pembayaran', sp);
-
-  const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' }});
-  const data = await res.json().catch(()=>({ok:false}));
-
-  if(!res.ok || !data.ok){
-    hint.textContent = 'Gagal memuat data.';
-    renderRows([]);
+  if(!manifestId){
+    loadingText.textContent = 'Pilih manifest terlebih dahulu.';
+    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data.</td></tr>`;
     return;
   }
 
-  hint.textContent = `Menampilkan ${data.rows.length} nota.`;
-  renderRows(data.rows);
+  loadingText.textContent = 'Memuat data...';
+  rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>`;
+
+  const url = `/finance/manifest/${manifestId}/shipments`;
+
+  const res = await fetch(url, {
+    headers: { 'Accept': 'application/json' }
+  });
+
+  let json = null;
+  try { json = await res.json(); } catch(e){}
+
+  if(!res.ok || !json || !json.ok){
+    loadingText.textContent = `Gagal memuat (HTTP ${res.status}).`;
+    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat nota.</td></tr>`;
+    return;
+  }
+
+  loadingText.textContent = `Menampilkan ${json.count} nota dari manifest ini.`;
+  renderRows(json.data);
 }
+
 
 document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('btnApply').addEventListener('click', (e)=>{
