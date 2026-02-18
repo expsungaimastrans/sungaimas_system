@@ -151,42 +151,39 @@ function updateSelectedInfo(){
 }
 
 async function loadShipments(){
-  const manifestId = manifestSel.value;
+  const manifestId = document.getElementById('manifestId').value;
+
+  if(!manifestId){
+    loadingText.textContent = 'Pilih manifest terlebih dahulu.';
+    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data.</td></tr>`;
+    return;
+  }
+
   manifestHidden.value = manifestId;
 
   loadingText.textContent = 'Memuat data...';
   rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>`;
 
-  const url = `{{ url('/finance/manifest') }}/${encodeURIComponent(manifestId)}/shipments`;
-
+  const url = `/finance/manifest/${manifestId}/shipments`;
 
   const res = await fetch(url, {
     method: 'GET',
     headers: {
-      'Accept': 'application/json',
-      'X-CSRF-TOKEN': csrf()
+      'Accept': 'application/json'
     }
   });
 
-  let json = null;
-  try { json = await res.json(); } catch(e){}
+  const json = await res.json();
 
-  if(!res.ok || !json || !json.ok){
-    loadingText.textContent = `Gagal memuat (HTTP ${res.status}).`;
+  if(!res.ok || !json.ok){
+    loadingText.textContent = `Gagal memuat data.`;
     rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat nota.</td></tr>`;
     return;
   }
 
-  loadingText.textContent = `Menampilkan ${json.count} nota dari manifest ini.`;
+  loadingText.textContent = `Menampilkan ${json.count} nota.`;
   renderRows(json.data);
 }
 
-document.getElementById('btnLoad').addEventListener('click', loadShipments);
-
-// Auto load pertama kali
-document.addEventListener('DOMContentLoaded', () => {
-  manifestHidden.value = manifestSel.value;
-  loadShipments();
-});
 </script>
 @endsection
