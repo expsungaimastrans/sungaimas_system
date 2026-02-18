@@ -213,17 +213,20 @@ function renderRows(data){
     const total    = (s.harga_total ?? s.total ?? 0);
 
     tr.innerHTML = `
-      <td class="text-center">
-        <input type="checkbox" class="rowCheck" name="shipment_ids[]" value="${s.id}">
-      </td>
-      <td class="text-center fw-semibold">${noNota}</td>
-      <td>${penerima}</td>
-      <td class="text-center">${tujuan}</td>
-      <td class="text-center">
-        <span class="badge ${badgeClass(status)}">${status}</span>
-      </td>
-      <td class="text-end">${rupiah(total)}</td>
-    `;
+  <td class="text-center">
+    <input type="checkbox" class="rowCheck" name="shipment_ids[]" value="${s.id}">
+  </td>
+  <td class="text-center fw-semibold">${s.no_nota ?? '-'}</td>
+  <td>${s.nama_penerima ?? '-'}</td>
+  <td class="text-center">${s.tujuan ?? '-'}</td>
+  <td class="text-center">
+    <span class="badge ${badgeClass(s.status_pembayaran)}">
+      ${s.status_pembayaran ?? 'UNKNOWN'}
+    </span>
+  </td>
+  <td class="text-end">${rupiah(s.harga_total)}</td>
+`;
+
     rowsEl.appendChild(tr);
   });
 
