@@ -94,6 +94,7 @@ class FinanceController extends Controller
         $penerima = trim((string) $request->query('penerima', ''));
         $sp       = trim((string) $request->query('status_pembayaran', ''));
 
+        // ID yang sudah masuk invoice (pakai kolom shipment_id yang memang ada)
         $alreadyInvoiced = InvoiceItem::pluck('shipment_id')->toArray();
 
         $shipments = Shipment::query()
@@ -176,11 +177,15 @@ class FinanceController extends Controller
                     'total'       => $grandTotal,
                 ]);
 
+                // Insert invoice items — sesuai kolom DB: no_nota, penerima, tujuan, nilai
                 foreach ($shipments as $s) {
                     InvoiceItem::create([
                         'invoice_id'  => $invoice->id,
                         'shipment_id' => $s->id,
-                        'amount'      => (float) $s->harga_total,
+                        'no_nota'     => $s->no_nota,
+                        'penerima'    => $s->nama_penerima,
+                        'tujuan'      => $s->tujuan,
+                        'nilai'       => (float) $s->harga_total,
                     ]);
                 }
 
@@ -255,8 +260,10 @@ class FinanceController extends Controller
 
     public function invoicePdf(Invoice $invoice)
     {
+        // Load items dengan shipment dan item barangnya
         $invoice->load(['items.shipment.items']);
 
+        // items->shipment bisa diakses via relasi
         $shipments  = $invoice->items->map(fn ($item) => $item->shipment)->filter();
         $grandTotal = (float) $invoice->total;
 

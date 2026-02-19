@@ -6,7 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class InvoiceItem extends Model
 {
-    protected $fillable = ['invoice_id','shipment_id','amount'];
+    protected $fillable = [
+        'invoice_id',
+        'shipment_id',
+        'no_nota',
+        'penerima',
+        'tujuan',
+        'nilai',
+    ];
 
     public function invoice()
     {
@@ -14,10 +21,7 @@ class InvoiceItem extends Model
     }
 
     public function shipment()
-{
-    return $this->belongsTo(\App\Models\Shipment::class, 'shipment_id');
-}
-
-    
-
+    {
+        return $this->belongsTo(\App\Models\Shipment::class, 'shipment_id');
+    }
 }
