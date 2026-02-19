@@ -280,17 +280,20 @@ public function exportCsv(Request $request)
     }
 
     public function pdf($id)
-    {
-        $shipment = Shipment::with('items')->findOrFail($id);
+{
+    $shipment = Shipment::with('items')->findOrFail($id);
 
-        $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-            ->setPaper([0, 0, 241.3, 139], 'portrait');
-            
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('shipments.pdf', [
+            'shipment' => $shipment,
+        ])
+        // 9.5 x 11 inch dalam milimeter (DomPDF pakai mm)
+        ->setPaper([0, 0, 241.3, 279.4], 'portrait');
 
-        $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
+    $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
-        return $pdf->stream('nota-' . $fileNo . '.pdf');
-    }
+    return $pdf->stream('nota-' . $fileNo . '.pdf');
+}
+
 
     /**
      * EDIT
