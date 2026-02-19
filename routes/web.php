@@ -68,30 +68,48 @@ Route::middleware(['auth'])->group(function () {
     // ================================
     // MANIFESTS
     // ================================
-    Route::middleware('role:owner,admin,finance')->group(function () {
-        Route::get('/manifests',        [ManifestController::class, 'index'])->name('manifests.index');
-        Route::get('/manifests/{id}',   [ManifestController::class, 'show'])->name('manifests.show');
-        Route::get('/manifests/{id}/pdf',[ManifestController::class, 'pdf'])->name('manifests.pdf');
-    });
+    // ================================
+// MANIFESTS
+// ================================
 
-    // ⚠️ Penting: /manifests/create harus ditulis sebelum /manifests/{id} (sudah aman karena group ini diletakkan setelah show?).
-    // Karena Laravel baca sesuai urutan file, kita taruh create lebih atas dari {id} dengan cara pindahkan ke atas:
-    // Tapi di file ini create route ada di bawah, maka kita buat ulang urutan dengan menempatkan create BEFORE route {id}.
-    // Cara paling aman: definisikan create dulu di group owner/admin.
+// 🔹 OWNER + ADMIN (CREATE / EDIT HARUS DI ATAS)
+Route::middleware('role:owner,admin')->group(function () {
 
-    Route::middleware('role:owner,admin')->group(function () {
-        Route::get('/manifests/create', [ManifestController::class, 'create'])->name('manifests.create');
-        Route::post('/manifests',       [ManifestController::class, 'store'])->name('manifests.store');
+    Route::get('/manifests/create', [ManifestController::class, 'create'])
+        ->name('manifests.create');
 
-        Route::get('/manifests/{id}/edit', [ManifestController::class, 'edit'])->name('manifests.edit');
-        Route::put('/manifests/{id}',      [ManifestController::class, 'update'])->name('manifests.update');
+    Route::post('/manifests', [ManifestController::class, 'store'])
+        ->name('manifests.store');
 
-        Route::post('/manifests/{manifest}/add/{shipment}', [ManifestController::class, 'addShipment'])
-            ->name('manifests.addShipment');
+    Route::get('/manifests/{id}/edit', [ManifestController::class, 'edit'])
+        ->name('manifests.edit');
 
-        Route::delete('/manifests/{manifest}/remove/{shipment}', [ManifestController::class, 'removeShipment'])
-            ->name('manifests.removeShipment');
-    });
+    Route::put('/manifests/{id}', [ManifestController::class, 'update'])
+        ->name('manifests.update');
+
+    Route::post('/manifests/{manifest}/add/{shipment}',
+        [ManifestController::class, 'addShipment']
+    )->name('manifests.addShipment');
+
+    Route::delete('/manifests/{manifest}/remove/{shipment}',
+        [ManifestController::class, 'removeShipment']
+    )->name('manifests.removeShipment');
+});
+
+
+// 🔹 SEMUA ROLE (LIST + SHOW DI BAWAH)
+Route::middleware('role:owner,admin,finance')->group(function () {
+
+    Route::get('/manifests', [ManifestController::class, 'index'])
+        ->name('manifests.index');
+
+    Route::get('/manifests/{id}', [ManifestController::class, 'show'])
+        ->name('manifests.show');
+
+    Route::get('/manifests/{id}/pdf', [ManifestController::class, 'pdf'])
+        ->name('manifests.pdf');
+});
+
 
 
     // ================================

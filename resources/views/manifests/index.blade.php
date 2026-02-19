@@ -10,7 +10,6 @@
 
     <div class="d-flex gap-2 mt-2 mt-md-0">
         <a href="{{ route('manifests.create') }}" class="btn btn-brand">+ Buat Manifest</a>
-
     </div>
 </div>
 
