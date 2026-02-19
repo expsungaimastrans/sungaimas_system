@@ -284,7 +284,7 @@ public function exportCsv(Request $request)
         $shipment = Shipment::with('items')->findOrFail($id);
 
         $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-            ->setPaper([0, 0, 241.3, 279.4], 'portrait');
+            ->setPaper([0, 0, 241.3, 139], 'portrait');
             
 
         $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);

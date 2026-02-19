@@ -290,7 +290,7 @@ class FinanceController extends Controller
             'invoice'    => $invoice,
             'shipments'  => $shipments,
             'grandTotal' => $grandTotal,
-        ])->setPaper([0, 0, 241.3, 279.4], 'portrait');
+        ])->setPaper([0, 0, 241.3, 139], 'portrait');
         
 
         $safe = str_replace(['/', '\\'], '-', $invoice->invoice_no);
