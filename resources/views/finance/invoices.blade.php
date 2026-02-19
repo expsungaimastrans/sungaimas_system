@@ -19,18 +19,16 @@
 @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
 
 @php
-  // controller baru mengirim tujuanOptions
   $tujuanOptions = $tujuanOptions ?? collect();
 @endphp
 
-{{-- FILTER BAR (mirip create manifest) --}}
+{{-- FILTER BAR --}}
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <div class="row g-2 align-items-end">
       <div class="col-lg-4">
         <label class="form-label fw-semibold mb-1">Search</label>
-        <input id="f_q" class="form-control"
-               placeholder="No Nota / Penerima / Tujuan">
+        <input id="f_q" class="form-control" placeholder="No Nota / Penerima / Tujuan">
       </div>
 
       <div class="col-lg-2">
@@ -45,8 +43,7 @@
 
       <div class="col-lg-2">
         <label class="form-label fw-semibold mb-1">Penerima</label>
-        <input id="f_penerima" class="form-control"
-               placeholder="Nama penerima">
+        <input id="f_penerima" class="form-control" placeholder="Nama penerima">
       </div>
 
       <div class="col-lg-2">
@@ -63,10 +60,8 @@
         <button class="btn btn-brand w-100" id="btnApply">Terapkan</button>
       </div>
     </div>
-
     <div class="text-muted small mt-2">
-      * Menampilkan nota yang <b>belum pernah masuk tagihan</b>.
-      (Kalau kamu pakai aturan “harus sudah masuk manifest”, itu di controller)
+      * Menampilkan nota yang sudah masuk manifest dan <b>belum pernah masuk tagihan</b>.
     </div>
   </div>
 </div>
@@ -75,15 +70,16 @@
   @csrf
 
   <div class="row g-3">
+    {{-- TABEL NOTA --}}
     <div class="col-lg-8">
       <div class="card shadow-sm">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
               <div class="fw-semibold">Pilih Nota untuk Tagihan</div>
-              <div class="text-muted small" id="hint">Silakan filter lalu klik Terapkan.</div>
+              <div class="text-muted small" id="hint">Klik "Terapkan" untuk memuat nota.</div>
             </div>
-            <div class="text-muted small" id="rowsInfo">0 nota</div>
+            <div class="text-muted small" id="rowsInfo"></div>
           </div>
 
           <div class="table-responsive">
@@ -102,25 +98,24 @@
               </thead>
               <tbody id="rows">
                 <tr>
-                  <td colspan="6" class="text-center text-muted py-4">Belum ada data.</td>
+                  <td colspan="6" class="text-center text-muted py-4">
+                    Gunakan filter di atas lalu klik Terapkan.
+                  </td>
                 </tr>
               </tbody>
             </table>
-          </div>
-
-          <div class="small text-muted" id="hintEmpty" style="display:none;">
-            Tidak ada nota yang cocok / semua sudah masuk tagihan.
           </div>
         </div>
       </div>
     </div>
 
+    {{-- PANEL KANAN --}}
     <div class="col-lg-4">
       <div class="card shadow-sm">
         <div class="card-body">
           <div class="fw-semibold mb-2">Info Tagihan</div>
 
-          <label class="form-label fw-semibold">Ditagihkan kepada (Nama / Toko / Perusahaan)</label>
+          <label class="form-label fw-semibold">Ditagihkan kepada</label>
           <input type="text" name="billed_to" class="form-control" required
                  placeholder="Contoh: Toko Sinar Jaya / PT ABC">
 
@@ -130,13 +125,12 @@
             <div class="text-muted">Dipilih</div>
             <div class="fw-semibold" id="selCount">0</div>
           </div>
-
           <div class="d-flex justify-content-between mt-1">
             <div class="text-muted">Grand Total</div>
             <div class="fw-semibold" id="selTotal">Rp 0</div>
           </div>
 
-          {{-- hidden input shipment_ids[] akan ditaruh di sini --}}
+          {{-- hidden inputs diisi JS --}}
           <div id="selectedInputs"></div>
 
           <button class="btn btn-primary w-100 mt-3" type="submit" id="btnSave" disabled>
@@ -144,7 +138,7 @@
           </button>
 
           <div class="small text-muted mt-2">
-            Setelah dibuat, tagihan akan muncul di <b>Daftar Tagihan</b>.
+            Setelah dibuat, tagihan muncul di <b>Daftar Tagihan</b>.
           </div>
         </div>
       </div>
@@ -152,142 +146,197 @@
   </div>
 </form>
 
-
 <script>
-function rupiah(n){
-  n = Number(n || 0);
-  return 'Rp ' + n.toLocaleString('id-ID');
+// ============================================================
+// HELPERS
+// ============================================================
+function rupiah(n) {
+  return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 }
-function payBadge(status){
+
+function payBadge(status) {
   const cls =
-    status === 'LUNAS' ? 'text-bg-success' :
-    status === 'PIUTANG' ? 'text-bg-warning' :
-    status === 'BATAL' ? 'text-bg-danger' :
+    status === 'LUNAS'      ? 'text-bg-success' :
+    status === 'PIUTANG'    ? 'text-bg-warning'  :
+    status === 'BATAL'      ? 'text-bg-danger'   :
     'text-bg-secondary';
-  return `<span class="badge ${cls}">${status}</span>`;
+  return `<span class="badge ${cls}">${status ?? 'UNKNOWN'}</span>`;
 }
 
-let selected = new Map(); // id -> total
+// ============================================================
+// STATE
+// ============================================================
+const selected = new Map(); // shipment_id -> harga_total
 
-function rebuildSelectedInputs(){
+function rebuildSelectedInputs() {
   const box = document.getElementById('selectedInputs');
   box.innerHTML = '';
-
   let total = 0;
-  selected.forEach((v, id) => {
-    total += Number(v || 0);
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'shipment_ids[]';
-    input.value = id;
-    box.appendChild(input);
+  selected.forEach((val, id) => {
+    total += Number(val || 0);
+    const inp = document.createElement('input');
+    inp.type  = 'hidden';
+    inp.name  = 'shipment_ids[]';
+    inp.value = id;
+    box.appendChild(inp);
   });
 
   document.getElementById('selCount').textContent = selected.size;
   document.getElementById('selTotal').textContent = rupiah(total);
-
-  document.getElementById('btnSave').disabled = (selected.size < 1);
+  document.getElementById('btnSave').disabled = selected.size < 1;
 }
 
-function updateSaveEnabled(){
-  const anyChecked = !!document.querySelector('.ck:checked');
-  document.getElementById('btnSave').disabled = !anyChecked;
-}
+// ============================================================
+// RENDER ROWS
+// ============================================================
+function renderRows(rows) {
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = '';
 
-function renderRows(data){
-  rowsEl.innerHTML = '';
+  const checkAll = document.getElementById('checkAll');
 
-  if(!data || data.length === 0){
-    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada nota di manifest ini.</td></tr>`;
-    selectedInfo.textContent = '0 nota dipilih';
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">
+      Tidak ada nota yang tersedia / semua sudah masuk tagihan.
+    </td></tr>`;
+    checkAll.disabled = true;
+    document.getElementById('rowsInfo').textContent = '0 nota';
     return;
   }
 
-  data.forEach(s => {
-    const tr = document.createElement('tr');
+  rows.forEach(s => {
+    // controller invoiceData mengirim field: id, no_nota, penerima, tujuan, status_pembayaran, total
+    const id     = s.id;
+    const noNota = s.no_nota  ?? '-';
+    const penerima = s.penerima ?? '-';   // ← field dari controller
+    const tujuan = s.tujuan   ?? '-';
+    const status = s.status_pembayaran ?? 'BELUM_BAYAR';
+    const total  = s.total    ?? 0;       // ← field dari controller
 
-    const noNota   = s.no_nota ?? '-';
-    const penerima = s.nama_penerima ?? s.penerima ?? '-';
-    const tujuan   = s.tujuan ?? '-';
-    const status   = (s.status_pembayaran ?? 'BELUM_BAYAR');
-    const total    = (s.harga_total ?? s.total ?? 0);
+    const isChecked = selected.has(String(id));
+
+    const tr = document.createElement('tr');
+    tr.dataset.id    = id;
+    tr.dataset.total = total;
 
     tr.innerHTML = `
-  <td class="text-center">
-    <input type="checkbox" class="rowCheck" name="shipment_ids[]" value="${s.id}">
-  </td>
-  <td class="text-center fw-semibold">${s.no_nota ?? '-'}</td>
-  <td>${s.nama_penerima ?? '-'}</td>
-  <td class="text-center">${s.tujuan ?? '-'}</td>
-  <td class="text-center">
-    <span class="badge ${badgeClass(s.status_pembayaran)}">
-      ${s.status_pembayaran ?? 'UNKNOWN'}
-    </span>
-  </td>
-  <td class="text-end">${rupiah(s.harga_total)}</td>
-`;
+      <td class="text-center">
+        <input type="checkbox" class="rowCheck" data-id="${id}" data-total="${total}"
+               ${isChecked ? 'checked' : ''}>
+      </td>
+      <td class="text-center fw-semibold">${noNota}</td>
+      <td>${penerima}</td>
+      <td class="text-center">${tujuan}</td>
+      <td class="text-center">${payBadge(status)}</td>
+      <td class="text-end">${rupiah(total)}</td>
+    `;
 
-    rowsEl.appendChild(tr);
+    tbody.appendChild(tr);
   });
 
-  bindCheckEvents();
+  // bind checkbox events
+  tbody.querySelectorAll('.rowCheck').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id    = String(cb.dataset.id);
+      const total = Number(cb.dataset.total || 0);
+      if (cb.checked) selected.set(id, total);
+      else             selected.delete(id);
+      rebuildSelectedInputs();
+
+      // update checkAll state
+      const allChecked = tbody.querySelectorAll('.rowCheck:not(:checked)').length === 0;
+      document.getElementById('checkAll').checked = allChecked;
+    });
+  });
+
+  checkAll.disabled = false;
+  document.getElementById('rowsInfo').textContent = `${rows.length} nota`;
 }
 
+// ============================================================
+// LOAD DATA dari /finance/invoices/data
+// ============================================================
+async function loadData() {
+  const q        = document.getElementById('f_q').value.trim();
+  const tujuan   = document.getElementById('f_tujuan').value;
+  const penerima = document.getElementById('f_penerima').value.trim();
+  const sp       = document.getElementById('f_sp').value;
 
-async function loadData(){
-  const manifestId = manifestSel.value;   // ✅ FIX DI SINI
-  manifestHidden.value = manifestId;
+  const params = new URLSearchParams();
+  if (q)        params.set('q', q);
+  if (tujuan)   params.set('tujuan', tujuan);
+  if (penerima) params.set('penerima', penerima);
+  if (sp)       params.set('status_pembayaran', sp);
 
-  if(!manifestId){
-    loadingText.textContent = 'Pilih manifest terlebih dahulu.';
-    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Belum ada data.</td></tr>`;
-    return;
-  }
+  const hint = document.getElementById('hint');
+  const rows = document.getElementById('rows');
 
-  loadingText.textContent = 'Memuat data...';
-  rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Memuat...</td></tr>`;
+  hint.textContent = 'Memuat data...';
+  rows.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">
+    <div class="spinner-border spinner-border-sm me-2"></div>Memuat nota...
+  </td></tr>`;
 
-  const url = `/finance/manifest/${manifestId}/shipments`;
-
-  const res = await fetch(url, {
-    headers: { 'Accept': 'application/json' }
-  });
+  document.getElementById('checkAll').disabled = true;
 
   let json = null;
-  try { json = await res.json(); } catch(e){}
+  try {
+    const res = await fetch(`/finance/invoices/data?${params.toString()}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    json = await res.json();
 
-  if(!res.ok || !json || !json.ok){
-    loadingText.textContent = `Gagal memuat (HTTP ${res.status}).`;
-    rowsEl.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Gagal memuat nota.</td></tr>`;
+    if (!res.ok || !json.ok) {
+      throw new Error(json.message ?? `HTTP ${res.status}`);
+    }
+  } catch (err) {
+    hint.textContent = 'Gagal memuat data.';
+    rows.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">
+      Error: ${err.message}
+    </td></tr>`;
     return;
   }
 
-  loadingText.textContent = `Menampilkan ${json.count} nota dari manifest ini.`;
-  renderRows(json.data);
+  const data = json.rows ?? [];
+  hint.textContent = data.length > 0
+    ? `Menampilkan ${data.length} nota.`
+    : 'Tidak ada nota yang tersedia.';
+
+  renderRows(data);
 }
 
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
 
-document.addEventListener('DOMContentLoaded', ()=>{
-  document.getElementById('btnApply').addEventListener('click', (e)=>{
+  // Tombol Terapkan
+  document.getElementById('btnApply').addEventListener('click', e => {
     e.preventDefault();
     loadData();
   });
 
-  document.getElementById('checkAll').addEventListener('change', (e)=>{
+  // Enter di filter fields
+  ['f_q','f_penerima'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); loadData(); }
+    });
+  });
+
+  // Check All
+  document.getElementById('checkAll').addEventListener('change', e => {
     const checked = e.target.checked;
-    document.querySelectorAll('.ck').forEach(x => {
-      x.checked = checked;
-      const tr = x.closest('tr');
-      const id = String(tr.dataset.id);
-      const total = Number(tr.dataset.total || 0);
-      if(checked) selected.set(id, total);
-      else selected.delete(id);
+    document.querySelectorAll('.rowCheck').forEach(cb => {
+      cb.checked = checked;
+      const id    = String(cb.dataset.id);
+      const total = Number(cb.dataset.total || 0);
+      if (checked) selected.set(id, total);
+      else          selected.delete(id);
     });
     rebuildSelectedInputs();
   });
 
-  // load awal
+  // Load awal saat halaman dibuka
   loadData();
 });
 </script>
