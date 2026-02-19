@@ -9,6 +9,7 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'shipment_id',
+        'amount',   // kolom lama - tetap ada
         'no_nota',
         'penerima',
         'tujuan',
@@ -22,6 +23,6 @@ class InvoiceItem extends Model
 
     public function shipment()
     {
-        return $this->belongsTo(\App\Models\Shipment::class, 'shipment_id');
+        return $this->belongsTo(Shipment::class, 'shipment_id');
     }
 }

@@ -7,11 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     protected $fillable = [
+        // kolom lama (tetap dipertahankan)
+        'no_invoice',
+        'tanggal',
+        'customer',
+        'catatan',
+        'total',
+        // kolom baru
         'invoice_no',
         'manifest_id',
         'billed_to',
         'status',
-        'total',
         'payment_proof_path',
         'paid_at',
     ];
