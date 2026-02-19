@@ -18,7 +18,7 @@ class RoleMiddleware
             abort(403, 'Unauthorized');
         }
 
-        $role = $user->role ?? null;
+        $role = strtolower($user->role ?? '');
 
         if (!$role || !in_array($role, $roles, true)) {
             abort(403, 'Forbidden');

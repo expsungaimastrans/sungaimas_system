@@ -73,38 +73,31 @@
         </div>
 
         @if(!empty($canDateRange) && $canDateRange)
-  <div class="col-md-2">
-    <label class="form-label small text-muted">Dari</label>
-    <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control form-control-sm">
-  </div>
-
-  <div class="col-md-2">
-    <label class="form-label small text-muted">Sampai</label>
-    <input type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control form-control-sm">
-  </div>
-@endif
-
+          <div class="col-md-2">
+            <label class="form-label small text-muted">Dari</label>
+            <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted">Sampai</label>
+            <input type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control form-control-sm">
+          </div>
+        @endif
 
         <div class="col-lg-8 d-flex gap-2 justify-content-end">
-            <button class="btn btn-brand">Terapkan</button>
-          
-            <a href="{{ route('shipments.export.csv', request()->query()) }}"
-               class="btn btn-outline-success">
-              Export CSV
-            </a>
-          
-            <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
-          </div>
-          
+          <button class="btn btn-brand">Terapkan</button>
+          <a href="{{ route('shipments.export.csv', request()->query()) }}"
+             class="btn btn-outline-success">Export CSV</a>
+          <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </div>
 
-    
-
-    <div class="text-muted small mt-2">
-      Menampilkan <b>{{ $shipments->total() }}</b> nota
-      @if($f_from || $f_to)
-        (range: {{ $f_from ?: '...' }} → {{ $f_to ?: '...' }})
-      @endif
-    </div>
+      <div class="text-muted small mt-2">
+        Menampilkan <b>{{ $shipments->total() }}</b> nota
+        @if($f_from || $f_to)
+          (range: {{ $f_from ?: '...' }} → {{ $f_to ?: '...' }})
+        @endif
+      </div>
+    </form>
   </div>
 </div>
 
@@ -121,7 +114,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -130,7 +122,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -140,7 +131,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -150,7 +140,6 @@
     </div>
   </div>
 </div>
-
 
 {{-- TABLE --}}
 <div class="card shadow-sm">
@@ -189,47 +178,39 @@
             </td>
 
             {{-- PEMBAYARAN --}}
-<td class="text-center">
-  @php
-      $payClass = match($s->status_pembayaran){
-          'LUNAS' => 'text-bg-success',
-          'PIUTANG' => 'text-bg-warning',
-          'BATAL' => 'text-bg-danger',
-          default => 'text-bg-secondary'
-      };
+            <td class="text-center">
+              @php
+                $payClass = match($s->status_pembayaran){
+                  'LUNAS'      => 'text-bg-success',
+                  'PIUTANG'    => 'text-bg-warning',
+                  'BATAL'      => 'text-bg-danger',
+                  default      => 'text-bg-secondary'
+                };
+                $canEditPayment = auth()->check()
+                  && in_array(strtolower(auth()->user()->role), ['owner', 'finance'], true);
+              @endphp
 
-      $canEditPayment = auth()->check() 
-          && in_array(auth()->user()->role, ['owner','finance'], true);
-  @endphp
+              <span id="pay-{{ $s->id }}" class="badge {{ $payClass }}">
+                {{ $s->status_pembayaran }}
+              </span>
 
-  <span id="pay-{{ $s->id }}" class="badge {{ $payClass }}">
-      {{ $s->status_pembayaran }}
-  </span>
-
-  @if($canEditPayment)
-      <div class="mt-2">
-          <select class="form-select form-select-sm"
-              onchange="setPembayaran({{ $s->id }}, this.value)">
-
-              <option value="">-- ubah --</option>
-
-              @foreach(['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'] as $opt)
-                  <option value="{{ $opt }}"
-                      {{ $s->status_pembayaran === $opt ? 'selected' : '' }}>
-                      {{ $opt }}
-                  </option>
-              @endforeach
-
-          </select>
-      </div>
-  @else
-      <div class="small text-muted mt-2">
-          Tidak dapat diubah
-      </div>
-  @endif
-</td>
-
-            
+              @if($canEditPayment)
+                <div class="mt-2">
+                  <select class="form-select form-select-sm"
+                          onchange="setPembayaran({{ $s->id }}, this.value)">
+                    <option value="">-- ubah --</option>
+                    @foreach(['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'] as $opt)
+                      <option value="{{ $opt }}"
+                        {{ $s->status_pembayaran === $opt ? 'selected' : '' }}>
+                        {{ $opt }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
+              @else
+                <div class="small text-muted mt-2">Tidak dapat diubah</div>
+              @endif
+            </td>
 
             {{-- AKSI --}}
             <td class="text-center">
@@ -270,38 +251,36 @@ function showMsg(id, text, ok=true){
 }
 
 async function setPembayaran(id, status){
-    if(!status) return;
+  if(!status) return;
 
-    const res = await fetch(`/shipments/${id}/set-pembayaran`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrf(),
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ status })
-    });
+  const res = await fetch(`/shipments/${id}/set-pembayaran`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-TOKEN': csrf(),
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ status })
+  });
 
-    let data = null;
-    try { data = await res.json(); } catch(e) {}
+  let data = null;
+  try { data = await res.json(); } catch(e) {}
 
-    if(!res.ok || !data || !data.ok){
-        showMsg(id, (data && data.message) ? data.message : `Gagal update (HTTP ${res.status})`, false);
-        return;
-    }
+  if(!res.ok || !data || !data.ok){
+    showMsg(id, (data && data.message) ? data.message : `Gagal update (HTTP ${res.status})`, false);
+    return;
+  }
 
-    const badge = document.getElementById(`pay-${id}`);
-    badge.textContent = data.status;
+  const badge = document.getElementById(`pay-${id}`);
+  badge.textContent = data.status;
+  badge.className = 'badge ' + (
+    data.status === 'LUNAS'   ? 'text-bg-success' :
+    data.status === 'PIUTANG' ? 'text-bg-warning'  :
+    data.status === 'BATAL'   ? 'text-bg-danger'   :
+    'text-bg-secondary'
+  );
 
-    badge.className = 'badge ' + (
-        data.status === 'LUNAS' ? 'text-bg-success' :
-        data.status === 'PIUTANG' ? 'text-bg-warning' :
-        data.status === 'BATAL' ? 'text-bg-danger' :
-        'text-bg-secondary'
-    );
-
-    showMsg(id, 'Status pembayaran diperbarui');
+  showMsg(id, 'Status pembayaran diperbarui');
 }
-
 </script>
 @endsection

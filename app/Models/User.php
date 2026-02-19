@@ -24,12 +24,10 @@ class User extends Authenticatable
         'username',
         'role',
     ];
-    
-    
-    public function isOwner(): bool   { return $this->role === 'OWNER'; }
-    public function isAdmin(): bool   { return $this->role === 'ADMIN'; }
-    public function isFinance(): bool { return $this->role === 'FINANCE'; }
-    
+
+    public function isOwner(): bool   { return $this->role === 'owner'; }
+    public function isAdmin(): bool   { return $this->role === 'admin'; }
+    public function isFinance(): bool { return $this->role === 'finance'; }
 
     /**
      * The attributes that should be hidden for serialization.
