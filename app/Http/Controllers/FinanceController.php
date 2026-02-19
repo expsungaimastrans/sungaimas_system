@@ -25,23 +25,16 @@ class FinanceController extends Controller
             ->get()
             ->keyBy('manifest_id');
 
-        return view('finance.index', [
-            'manifests' => $manifests,
-            'unpaidMap' => $stats,
-        ]);
+        return view('finance.index', ['manifests' => $manifests, 'unpaidMap' => $stats]);
     }
 
     public function byManifest(Manifest $manifest)
     {
         $ids = ManifestItem::where('manifest_id', $manifest->id)
-            ->whereNotNull('shipment_id')
-            ->pluck('shipment_id')
-            ->toArray();
+            ->whereNotNull('shipment_id')->pluck('shipment_id')->toArray();
 
-        $shipments = Shipment::with('items')
-            ->whereIn('id', $ids)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $shipments = Shipment::with('items')->whereIn('id', $ids)
+            ->orderBy('created_at', 'desc')->get();
 
         $total  = $shipments->count();
         $unpaid = $shipments->where('status_pembayaran', '!=', 'LUNAS')->count();
@@ -78,11 +71,8 @@ class FinanceController extends Controller
     public function invoices(Request $request)
     {
         $tujuanOptions = Shipment::select('tujuan')
-            ->whereNotNull('tujuan')
-            ->where('tujuan', '<>', '')
-            ->distinct()
-            ->orderBy('tujuan')
-            ->pluck('tujuan');
+            ->whereNotNull('tujuan')->where('tujuan', '<>', '')
+            ->distinct()->orderBy('tujuan')->pluck('tujuan');
 
         return view('finance.invoices', ['tujuanOptions' => $tujuanOptions]);
     }
@@ -94,28 +84,22 @@ class FinanceController extends Controller
         $penerima = trim((string) $request->query('penerima', ''));
         $sp       = trim((string) $request->query('status_pembayaran', ''));
 
-        // ID yang sudah masuk invoice (pakai kolom shipment_id yang memang ada)
         $alreadyInvoiced = InvoiceItem::pluck('shipment_id')->toArray();
 
         $shipments = Shipment::query()
             ->whereNotNull('manifest_id')
             ->whereNotIn('id', empty($alreadyInvoiced) ? [0] : $alreadyInvoiced)
-            ->when($q, function ($query) use ($q) {
-                $query->where(function ($qq) use ($q) {
-                    $qq->where('no_nota',       'like', "%{$q}%")
-                       ->orWhere('nama_pengirim','like', "%{$q}%")
-                       ->orWhere('nama_penerima','like', "%{$q}%")
-                       ->orWhere('tujuan',       'like', "%{$q}%");
-                });
-            })
-            ->when($tujuan,   fn ($q) => $q->where('tujuan', $tujuan))
-            ->when($penerima, fn ($q) => $q->where('nama_penerima', 'like', "%{$penerima}%"))
-            ->when($sp,       fn ($q) => $q->where('status_pembayaran', $sp))
-            ->orderByDesc('created_at')
-            ->limit(200)
-            ->get();
+            ->when($q, fn ($q2, $v) => $q2->where(fn ($qq) => $qq
+                ->where('no_nota',       'like', "%{$v}%")
+                ->orWhere('nama_pengirim','like', "%{$v}%")
+                ->orWhere('nama_penerima','like', "%{$v}%")
+                ->orWhere('tujuan',       'like', "%{$v}%")))
+            ->when($tujuan,   fn ($q2) => $q2->where('tujuan', $tujuan))
+            ->when($penerima, fn ($q2) => $q2->where('nama_penerima', 'like', "%{$penerima}%"))
+            ->when($sp,       fn ($q2) => $q2->where('status_pembayaran', $sp))
+            ->orderByDesc('created_at')->limit(200)->get();
 
-        $rows = $shipments->map(fn ($s) => [
+        return response()->json(['ok' => true, 'rows' => $shipments->map(fn ($s) => [
             'id'                => (int) $s->id,
             'no_nota'           => $s->no_nota,
             'penerima'          => $s->nama_penerima,
@@ -123,9 +107,7 @@ class FinanceController extends Controller
             'status_pembayaran' => $s->status_pembayaran,
             'total'             => (float) $s->harga_total,
             'manifest_id'       => $s->manifest_id,
-        ])->values();
-
-        return response()->json(['ok' => true, 'rows' => $rows]);
+        ])->values()]);
     }
 
     public function storeInvoice(Request $request)
@@ -139,45 +121,30 @@ class FinanceController extends Controller
         $billedTo = trim($data['billed_to']);
         $ids      = array_values(array_unique(array_map('intval', $data['shipment_ids'])));
 
-        // Exclude yang sudah masuk invoice
-        $alreadyInvoiced = InvoiceItem::whereIn('shipment_id', $ids)
-            ->pluck('shipment_id')
-            ->toArray();
-
+        $alreadyInvoiced = InvoiceItem::whereIn('shipment_id', $ids)->pluck('shipment_id')->toArray();
         $validIds = array_values(array_diff($ids, $alreadyInvoiced));
 
         if (empty($validIds)) {
-            return back()->withInput()
-                ->with('error', 'Semua nota yang dipilih sudah masuk tagihan lain.');
+            return back()->withInput()->with('error', 'Semua nota yang dipilih sudah masuk tagihan lain.');
         }
 
         try {
             $invoice = DB::transaction(function () use ($billedTo, $validIds) {
-
                 $shipments = Shipment::whereIn('id', $validIds)
-                    ->whereNotNull('manifest_id')
-                    ->lockForUpdate()
-                    ->get();
+                    ->whereNotNull('manifest_id')->lockForUpdate()->get();
 
                 if ($shipments->isEmpty()) {
-                    throw new \RuntimeException(
-                        'Nota tidak ditemukan atau belum masuk manifest. ' .
-                        'Pastikan nota sudah dimasukkan ke manifest terlebih dahulu.'
-                    );
+                    throw new \RuntimeException('Nota tidak ditemukan atau belum masuk manifest.');
                 }
 
-                $grandTotal = (float) $shipments->sum('harga_total');
-                $invoiceNo  = $this->generateInvoiceNo($billedTo);
-
                 $invoice = Invoice::create([
-                    'invoice_no'  => $invoiceNo,
+                    'invoice_no'  => $this->generateInvoiceNo($billedTo),
                     'manifest_id' => null,
                     'billed_to'   => $billedTo,
                     'status'      => 'BELUM_DITAGIH',
-                    'total'       => $grandTotal,
+                    'total'       => (float) $shipments->sum('harga_total'),
                 ]);
 
-                // Insert invoice items — sesuai kolom DB: no_nota, penerima, tujuan, nilai
                 foreach ($shipments as $s) {
                     InvoiceItem::create([
                         'invoice_id'  => $invoice->id,
@@ -191,38 +158,27 @@ class FinanceController extends Controller
 
                 return $invoice;
             });
-
         } catch (\RuntimeException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
             report($e);
-            return back()->withInput()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
 
-        // Langsung buka PDF setelah simpan
         return redirect()->route('finance.invoices.pdf', $invoice->id);
     }
 
     private function generateInvoiceNo(string $billedTo): string
     {
-        $slug = Str::upper(
-            Str::substr(preg_replace('/[^a-zA-Z0-9]+/', '-', $billedTo), 0, 12)
-        );
-        $slug = trim($slug, '-');
+        $slug = trim(Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]+/', '-', $billedTo), 0, 12)), '-');
         if (!$slug) $slug = 'CUST';
-
         $seq = (int) Invoice::where('billed_to', $billedTo)->count() + 1;
-
         return 'INV-' . $slug . '-' . str_pad((string) $seq, 4, '0', STR_PAD_LEFT) . '-' . now()->format('ym');
     }
 
     public function listInvoices()
     {
-        $invoices = Invoice::withCount('items')
-            ->orderBy('created_at', 'desc')
-            ->paginate(12);
-
+        $invoices = Invoice::withCount('items')->orderBy('created_at', 'desc')->paginate(12);
         return view('finance.invoices_list', compact('invoices'));
     }
 
@@ -230,6 +186,117 @@ class FinanceController extends Controller
     {
         $invoice->load(['items.shipment']);
         return view('finance.invoice_show', compact('invoice'));
+    }
+
+    // =============================================
+    // EDIT INVOICE (owner only — di route)
+    // =============================================
+    public function editInvoice(Invoice $invoice)
+    {
+        $invoice->load(['items.shipment']);
+        return view('finance.invoice_edit', compact('invoice'));
+    }
+
+    // =============================================
+    // AJAX: AVAILABLE SHIPMENTS (untuk search di edit)
+    // =============================================
+    public function availableShipments(Request $request)
+    {
+        $q         = trim((string) $request->query('q', ''));
+        $invoiceId = (int) $request->query('invoice_id', 0);
+
+        // Shipment_ids yang sudah ada di invoice ini (dikecualikan dari "sudah dipakai")
+        $currentInvoiceItems = $invoiceId
+            ? InvoiceItem::where('invoice_id', $invoiceId)->pluck('shipment_id')->toArray()
+            : [];
+
+        // Semua shipment yang sudah di invoice LAIN
+        $otherInvoiced = InvoiceItem::whereNotIn('invoice_id', $invoiceId ? [$invoiceId] : [])
+            ->pluck('shipment_id')->toArray();
+
+        $shipments = Shipment::query()
+            ->whereNotNull('manifest_id')
+            ->whereNotIn('id', empty($otherInvoiced) ? [0] : $otherInvoiced)
+            ->whereNotIn('id', $currentInvoiceItems) // jangan tampilkan yg sudah ada di invoice ini
+            ->when($q, fn ($q2) => $q2->where(fn ($qq) => $qq
+                ->where('no_nota',       'like', "%{$q}%")
+                ->orWhere('nama_penerima','like', "%{$q}%")
+                ->orWhere('tujuan',       'like', "%{$q}%")))
+            ->orderByDesc('created_at')
+            ->limit(30)
+            ->get();
+
+        return response()->json(['ok' => true, 'rows' => $shipments->map(fn ($s) => [
+            'id'                => (int) $s->id,
+            'no_nota'           => $s->no_nota,
+            'penerima'          => $s->nama_penerima,
+            'tujuan'            => $s->tujuan,
+            'status_pembayaran' => $s->status_pembayaran,
+            'total'             => (float) $s->harga_total,
+        ])->values()]);
+    }
+
+    // =============================================
+    // AJAX: TAMBAH SHIPMENT KE INVOICE
+    // =============================================
+    public function addShipmentToInvoice(Invoice $invoice, Shipment $shipment)
+    {
+        // Cek sudah ada di invoice ini?
+        $exists = InvoiceItem::where('invoice_id', $invoice->id)
+            ->where('shipment_id', $shipment->id)->exists();
+        if ($exists) {
+            return response()->json(['ok' => false, 'message' => 'Nota sudah ada dalam tagihan ini.'], 409);
+        }
+
+        // Cek sudah ada di invoice lain?
+        $inOther = InvoiceItem::where('shipment_id', $shipment->id)
+            ->where('invoice_id', '!=', $invoice->id)->exists();
+        if ($inOther) {
+            return response()->json(['ok' => false, 'message' => 'Nota sudah masuk tagihan lain.'], 409);
+        }
+
+        return DB::transaction(function () use ($invoice, $shipment) {
+            InvoiceItem::create([
+                'invoice_id'  => $invoice->id,
+                'shipment_id' => $shipment->id,
+                'no_nota'     => $shipment->no_nota,
+                'penerima'    => $shipment->nama_penerima,
+                'tujuan'      => $shipment->tujuan,
+                'nilai'       => (float) $shipment->harga_total,
+            ]);
+
+            // Recalculate total invoice
+            $newTotal = (float) InvoiceItem::where('invoice_id', $invoice->id)->sum('nilai');
+            $invoice->update(['total' => $newTotal]);
+
+            return response()->json([
+                'ok'      => true,
+                'nilai'   => (float) $shipment->harga_total,
+                'total'   => $newTotal,
+            ]);
+        });
+    }
+
+    // =============================================
+    // AJAX: HAPUS SHIPMENT DARI INVOICE
+    // =============================================
+    public function removeShipmentFromInvoice(Invoice $invoice, Shipment $shipment)
+    {
+        return DB::transaction(function () use ($invoice, $shipment) {
+            $deleted = InvoiceItem::where('invoice_id', $invoice->id)
+                ->where('shipment_id', $shipment->id)
+                ->delete();
+
+            if (!$deleted) {
+                return response()->json(['ok' => false, 'message' => 'Item tidak ditemukan.'], 404);
+            }
+
+            // Recalculate total invoice
+            $newTotal = (float) InvoiceItem::where('invoice_id', $invoice->id)->sum('nilai');
+            $invoice->update(['total' => $newTotal]);
+
+            return response()->json(['ok' => true, 'total' => $newTotal]);
+        });
     }
 
     public function updateInvoiceStatus(Request $request, Invoice $invoice)
@@ -260,10 +327,7 @@ class FinanceController extends Controller
 
     public function invoicePdf(Invoice $invoice)
     {
-        // Load items dengan shipment dan item barangnya
         $invoice->load(['items.shipment.items']);
-
-        // items->shipment bisa diakses via relasi
         $shipments  = $invoice->items->map(fn ($item) => $item->shipment)->filter();
         $grandTotal = (float) $invoice->total;
 
@@ -274,7 +338,6 @@ class FinanceController extends Controller
         ])->setPaper('A4', 'portrait');
 
         $safe = str_replace(['/', '\\'], '-', $invoice->invoice_no);
-
         return $pdf->stream("tagihan-{$safe}.pdf");
     }
 
@@ -286,14 +349,11 @@ class FinanceController extends Controller
             )
             ->join('manifest_items', 'manifest_items.shipment_id', '=', 'shipments.id')
             ->where('manifest_items.manifest_id', $manifest->id)
-            ->orderBy('shipments.created_at', 'desc')
-            ->get();
+            ->orderBy('shipments.created_at', 'desc')->get();
 
         return response()->json([
-            'ok'          => true,
-            'manifest_id' => $manifest->id,
-            'count'       => $shipments->count(),
-            'data'        => $shipments,
+            'ok' => true, 'manifest_id' => $manifest->id,
+            'count' => $shipments->count(), 'data' => $shipments,
         ]);
     }
 }

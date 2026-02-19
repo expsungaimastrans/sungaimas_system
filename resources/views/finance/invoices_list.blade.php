@@ -2,19 +2,23 @@
 @section('title','Daftar Tagihan')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
+
+{{-- NAVBAR TAGIHAN --}}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
   <div>
     <div class="page-title h4 mb-0">Daftar Tagihan</div>
     <div class="text-muted">Kelola status tagihan & bukti bayar</div>
   </div>
-  <div class="d-flex gap-2">
-    <a href="{{ route('finance.invoices') }}" class="btn btn-brand">+ Buat Tagihan</a>
-    <a href="{{ route('finance.index') }}" class="btn btn-outline-secondary">Kembali</a>
+  <div class="d-flex gap-2 flex-wrap mt-2 mt-md-0">
+    <a href="{{ route('finance.invoices') }}"    class="btn btn-brand">+ Buat Tagihan</a>
+    <a href="{{ route('finance.index') }}"       class="btn btn-outline-secondary">Finance</a>
+    <a href="{{ route('manifests.index') }}"     class="btn btn-outline-secondary">Manifest</a>
+    <a href="{{ route('shipments.index') }}"     class="btn btn-outline-secondary">Nota</a>
   </div>
 </div>
 
 @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
-@if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
+@if(session('error'))   <div class="alert alert-danger">{{ session('error') }}</div>   @endif
 
 <div class="card shadow-sm">
   <div class="card-body">
@@ -27,7 +31,8 @@
             <th>Jumlah Nota</th>
             <th>Total</th>
             <th>Status</th>
-            <th style="width:220px;">Aksi</th>
+            <th>Dibuat</th>
+            <th style="width:240px;">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -40,27 +45,37 @@
               <td class="text-center">
                 @php
                   $cls = match($inv->status){
-                    'LUNAS' => 'text-bg-success',
+                    'LUNAS'               => 'text-bg-success',
                     'MENUNGGU_PEMBAYARAN' => 'text-bg-warning',
-                    default => 'text-bg-secondary'
+                    default               => 'text-bg-secondary'
                   };
                 @endphp
                 <span class="badge {{ $cls }}">{{ $inv->status }}</span>
               </td>
+              <td class="text-center text-muted small">
+                {{ $inv->created_at ? $inv->created_at->format('d/m/Y') : '-' }}
+              </td>
               <td class="text-center">
-                <div class="d-flex justify-content-center gap-2 flex-wrap">
-                  <a href="{{ route('finance.invoices.show', $inv) }}" class="btn btn-sm btn-outline-primary">Detail</a>
-                  <a href="{{ route('finance.invoices.pdf', $inv) }}" class="btn btn-sm btn-outline-secondary">PDF</a>
+                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                  <a href="{{ route('finance.invoices.show', $inv) }}"
+                     class="btn btn-sm btn-outline-primary">Detail</a>
+                  <a href="{{ route('finance.invoices.pdf', $inv) }}"
+                     class="btn btn-sm btn-outline-secondary">PDF</a>
+                  @if(strtolower(auth()->user()->role) === 'owner')
+                    <a href="{{ route('finance.invoices.edit', $inv) }}"
+                       class="btn btn-sm btn-outline-warning">Edit</a>
+                  @endif
                 </div>
               </td>
             </tr>
           @empty
-            <tr><td colspan="6" class="text-center text-muted py-4">Belum ada tagihan.</td></tr>
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">Belum ada tagihan.</td>
+            </tr>
           @endforelse
         </tbody>
       </table>
     </div>
-
     <div class="mt-3">{{ $invoices->links() }}</div>
   </div>
 </div>
