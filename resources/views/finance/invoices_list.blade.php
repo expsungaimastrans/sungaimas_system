@@ -11,9 +11,6 @@
   </div>
   <div class="d-flex gap-2 flex-wrap mt-2 mt-md-0">
     <a href="{{ route('finance.invoices') }}"    class="btn btn-brand">+ Buat Tagihan</a>
-    <a href="{{ route('finance.index') }}"       class="btn btn-outline-secondary">Finance</a>
-    <a href="{{ route('manifests.index') }}"     class="btn btn-outline-secondary">Manifest</a>
-    <a href="{{ route('shipments.index') }}"     class="btn btn-outline-secondary">Nota</a>
   </div>
 </div>
 
