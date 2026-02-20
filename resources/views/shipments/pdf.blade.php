@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <title>Nota {{ $shipment->no_nota }}</title>
 <style>
-  body { font-family: "Times New Roman", serif; font-size: 11px; }
-  table { width: 100%; border-collapse: collapse; }
+  body { font-size: 14px; /* ubah disini */ font-family: "DejaVu Sans Mono";\; }
+  table { font-size: 13px; width: 100%; border-collapse: collapse; }
   .line td { border-bottom: 1px solid #000; padding: 3px 0; }
   .box td, .box th { border: 1px solid #000; padding: 4px; }
   .center { text-align: center; }
   .right  { text-align: right; }
   .bold   { font-weight: bold; }
-  .small  { font-size: 10px; }
+  .small  { font-size: 12px; }
   .nowrap { white-space: nowrap; }
 </style>
 </head>
