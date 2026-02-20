@@ -289,8 +289,7 @@ public function exportCsv(Request $request)
 
     $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
         ->setPaper([0, 0, $width, $height], 'portrait')
-        ->set_option('dpi', 203)
-        ->set_option('defaultFont', 'DejaVu Sans Mono');
+        ->set_option('dpi', 203);
 
     $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
@@ -306,8 +305,8 @@ public function pdfHalf($id)
 
     $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
         ->setPaper($halfPaper, 'portrait')
-        ->set_option('dpi', 203)
-        ->set_option('defaultFont', 'DejaVu Sans Mono');
+        ->set_option('dpi', 203);
+        
 
     $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
