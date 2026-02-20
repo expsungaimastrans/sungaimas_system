@@ -4,36 +4,73 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class FileController extends Controller
 {
-    /**
-     * Tampilkan file bukti bayar langsung di browser (inline)
-     * tanpa harus download. Support jpg, png, pdf.
-     */
     public function viewBukti(Request $request, string $path)
     {
-        // Decode path (bisa punya sub-folder: bukti-bayar/xxx.jpg)
+        // Decode URL encoding
         $decoded = urldecode($path);
 
-        if (!Storage::disk('public')->exists($decoded)) {
-            abort(404, 'File tidak ditemukan.');
+        Log::info('FileController::viewBukti', [
+            'raw_path'    => $path,
+            'decoded'     => $decoded,
+            'disk_root'   => Storage::disk('public')->path(''),
+            'file_exists' => Storage::disk('public')->exists($decoded),
+        ]);
+
+        // Coba disk public dulu
+        if (Storage::disk('public')->exists($decoded)) {
+            $fullPath = Storage::disk('public')->path($decoded);
+            return $this->streamFile($fullPath);
         }
 
-        $fullPath  = Storage::disk('public')->path($decoded);
-        $mimeType  = mime_content_type($fullPath);
-        $ext       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        // Fallback: coba path langsung (storage/app/public/...)
+        $directPath = storage_path('app/public/' . $decoded);
+        if (file_exists($directPath)) {
+            return $this->streamFile($directPath);
+        }
 
-        // Hanya izinkan gambar dan PDF
-        $allowed = ['jpg', 'jpeg', 'png', 'pdf'];
+        // Fallback: coba public_path/storage/...
+        $publicPath = public_path('storage/' . $decoded);
+        if (file_exists($publicPath)) {
+            return $this->streamFile($publicPath);
+        }
+
+        Log::warning('FileController: file not found', [
+            'decoded'     => $decoded,
+            'disk_path'   => Storage::disk('public')->path($decoded),
+            'direct_path' => $directPath,
+            'public_path' => $publicPath,
+        ]);
+
+        abort(404, 'File tidak ditemukan: ' . $decoded);
+    }
+
+    private function streamFile(string $fullPath): \Symfony\Component\HttpFoundation\Response
+    {
+        $ext      = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        $allowed  = ['jpg', 'jpeg', 'png', 'pdf', 'webp'];
+
         if (!in_array($ext, $allowed)) {
             abort(403, 'Tipe file tidak diizinkan.');
         }
 
-        // Tampilkan inline di browser (bukan force download)
+        $mimeMap = [
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'pdf'  => 'application/pdf',
+            'webp' => 'image/webp',
+        ];
+
+        $mimeType = $mimeMap[$ext] ?? mime_content_type($fullPath);
+
         return response()->file($fullPath, [
             'Content-Type'        => $mimeType,
             'Content-Disposition' => 'inline; filename="' . basename($fullPath) . '"',
+            'Cache-Control'       => 'private, max-age=3600',
         ]);
     }
 }

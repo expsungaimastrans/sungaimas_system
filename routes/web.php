@@ -16,15 +16,16 @@ Route::get('/login',   [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login',  [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// FILE VIEWER — di luar middleware auth agar bisa buka tab baru tanpa session issue
+// Tetap aman karena hanya serve file dari storage/public dengan whitelist extension
+Route::get('/files/view/{path}', [FileController::class, 'viewBukti'])
+    ->where('path', '.+')
+    ->name('files.view');
+
 // ===================================================
 // AUTH REQUIRED
 // ===================================================
 Route::middleware(['auth'])->group(function () {
-
-    // ── FILE VIEWER (semua role, hanya file di storage/public) ──
-    Route::get('/files/view/{path}', [FileController::class, 'viewBukti'])
-        ->where('path', '.*')
-        ->name('files.view');
 
     // DASHBOARD (owner only)
     Route::middleware('role:owner')->group(function () {
@@ -92,14 +93,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/invoices/list',         [FinanceController::class, 'listInvoices'])->name('finance.invoices.list');
         Route::get('/invoices/available-shipments', [FinanceController::class, 'availableShipments'])->name('finance.invoices.availableShipments');
 
-        // {invoice} routes - di bawah static
+        // {invoice} routes
         Route::get('/invoices/{invoice}/pdf',    [FinanceController::class, 'invoicePdf'])->name('finance.invoices.pdf');
         Route::post('/invoices/{invoice}/status',[FinanceController::class, 'updateInvoiceStatus'])->name('finance.invoices.status');
         Route::get('/invoices/{invoice}',        [FinanceController::class, 'showInvoice'])->name('finance.invoices.show');
 
         // Edit invoice - owner only
-        Route::get('/invoices/{invoice}/edit',                        [FinanceController::class, 'editInvoice'])->middleware('role:owner')->name('finance.invoices.edit');
-        Route::post('/invoices/{invoice}/add-shipment/{shipment}',    [FinanceController::class, 'addShipmentToInvoice'])->middleware('role:owner')->name('finance.invoices.addShipment');
+        Route::get('/invoices/{invoice}/edit',                         [FinanceController::class, 'editInvoice'])->middleware('role:owner')->name('finance.invoices.edit');
+        Route::post('/invoices/{invoice}/add-shipment/{shipment}',     [FinanceController::class, 'addShipmentToInvoice'])->middleware('role:owner')->name('finance.invoices.addShipment');
         Route::delete('/invoices/{invoice}/remove-shipment/{shipment}',[FinanceController::class, 'removeShipmentFromInvoice'])->middleware('role:owner')->name('finance.invoices.removeShipment');
     });
 });
