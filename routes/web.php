@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FileController;
 
 // ===================================================
 // PUBLIC
@@ -19,6 +20,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // AUTH REQUIRED
 // ===================================================
 Route::middleware(['auth'])->group(function () {
+
+    // ── FILE VIEWER (semua role, hanya file di storage/public) ──
+    Route::get('/files/view/{path}', [FileController::class, 'viewBukti'])
+        ->where('path', '.*')
+        ->name('files.view');
 
     // DASHBOARD (owner only)
     Route::middleware('role:owner')->group(function () {
@@ -58,8 +64,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/manifests',       [ManifestController::class, 'store'])->name('manifests.store');
         Route::get('/manifests/{id}/edit', [ManifestController::class, 'edit'])->name('manifests.edit');
         Route::put('/manifests/{id}',      [ManifestController::class, 'update'])->name('manifests.update');
-        Route::post('/manifests/{manifest}/add/{shipment}',     [ManifestController::class, 'addShipment'])->name('manifests.addShipment');
-        Route::delete('/manifests/{manifest}/remove/{shipment}',[ManifestController::class, 'removeShipment'])->name('manifests.removeShipment');
+        Route::post('/manifests/{manifest}/add/{shipment}',      [ManifestController::class, 'addShipment'])->name('manifests.addShipment');
+        Route::delete('/manifests/{manifest}/remove/{shipment}', [ManifestController::class, 'removeShipment'])->name('manifests.removeShipment');
     });
 
     Route::middleware('role:owner,admin,finance')->group(function () {
@@ -79,27 +85,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/shipments/{shipment}/update',  [FinanceController::class, 'updateShipmentFinance'])->name('finance.shipment.update');
         Route::get('/manifest/{manifest}/shipments', [FinanceController::class, 'manifestShipmentsJson'])->name('finance.manifest.shipments');
 
-        // TAGIHAN — static routes HARUS di atas {invoice}
+        // Static routes HARUS di atas {invoice}
         Route::get('/invoices',              [FinanceController::class, 'invoices'])->name('finance.invoices');
         Route::get('/invoices/data',         [FinanceController::class, 'invoiceData'])->name('finance.invoices.data');
         Route::post('/invoices/store',       [FinanceController::class, 'storeInvoice'])->name('finance.invoices.store');
         Route::get('/invoices/list',         [FinanceController::class, 'listInvoices'])->name('finance.invoices.list');
+        Route::get('/invoices/available-shipments', [FinanceController::class, 'availableShipments'])->name('finance.invoices.availableShipments');
 
-        // Available shipments untuk edit invoice (search)
-        Route::get('/invoices/available-shipments', [FinanceController::class, 'availableShipments'])
-            ->name('finance.invoices.availableShipments');
+        // {invoice} routes - di bawah static
+        Route::get('/invoices/{invoice}/pdf',    [FinanceController::class, 'invoicePdf'])->name('finance.invoices.pdf');
+        Route::post('/invoices/{invoice}/status',[FinanceController::class, 'updateInvoiceStatus'])->name('finance.invoices.status');
+        Route::get('/invoices/{invoice}',        [FinanceController::class, 'showInvoice'])->name('finance.invoices.show');
 
-        // Routes dengan {invoice} — di bawah semua static
-        Route::get('/invoices/{invoice}/pdf',                [FinanceController::class, 'invoicePdf'])->name('finance.invoices.pdf');
-        Route::post('/invoices/{invoice}/status',            [FinanceController::class, 'updateInvoiceStatus'])->name('finance.invoices.status');
-        Route::get('/invoices/{invoice}',                    [FinanceController::class, 'showInvoice'])->name('finance.invoices.show');
-
-        // EDIT INVOICE — owner only (middleware tambahan)
-        Route::get('/invoices/{invoice}/edit',               [FinanceController::class, 'editInvoice'])
-            ->middleware('role:owner')->name('finance.invoices.edit');
-        Route::post('/invoices/{invoice}/add-shipment/{shipment}',    [FinanceController::class, 'addShipmentToInvoice'])
-            ->middleware('role:owner')->name('finance.invoices.addShipment');
-        Route::delete('/invoices/{invoice}/remove-shipment/{shipment}', [FinanceController::class, 'removeShipmentFromInvoice'])
-            ->middleware('role:owner')->name('finance.invoices.removeShipment');
+        // Edit invoice - owner only
+        Route::get('/invoices/{invoice}/edit',                        [FinanceController::class, 'editInvoice'])->middleware('role:owner')->name('finance.invoices.edit');
+        Route::post('/invoices/{invoice}/add-shipment/{shipment}',    [FinanceController::class, 'addShipmentToInvoice'])->middleware('role:owner')->name('finance.invoices.addShipment');
+        Route::delete('/invoices/{invoice}/remove-shipment/{shipment}',[FinanceController::class, 'removeShipmentFromInvoice'])->middleware('role:owner')->name('finance.invoices.removeShipment');
     });
 });

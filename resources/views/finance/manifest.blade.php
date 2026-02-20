@@ -21,7 +21,7 @@
   </div>
   <div class="d-flex gap-2 mt-2 mt-md-0">
     <a href="{{ route('finance.index') }}" class="btn btn-outline-secondary">Kembali</a>
-    <a href="/manifests/{{ $manifest->id }}/pdf" class="btn btn-outline-secondary">PDF Manifest</a>
+    <a href="{{ route('manifests.pdf', $manifest->id) }}" class="btn btn-outline-secondary" target="_blank">PDF Manifest</a>
   </div>
 </div>
 
@@ -48,9 +48,6 @@
   </div>
 </div>
 
-{{-- FORM TAGIHAN (gabungan nota) --}}
-
-{{-- LIST FINANCE UPDATE --}}
 <div class="card shadow-sm">
   <div class="card-body">
     <div class="fw-semibold mb-2">Kelola Pembayaran Nota</div>
@@ -68,7 +65,7 @@
             <th style="width:120px;">Total</th>
             <th style="width:120px;">Tipe Bayar</th>
             <th style="width:140px;">Status</th>
-            <th style="width:220px;">Bukti Bayar</th>
+            <th style="width:200px;">Bukti Bayar</th>
             <th style="width:120px;">Aksi</th>
           </tr>
         </thead>
@@ -87,29 +84,26 @@
             <td class="text-center">
               @php
                 $payClass = match($s->status_pembayaran){
-                  'LUNAS' => 'text-bg-success',
+                  'LUNAS'   => 'text-bg-success',
                   'PIUTANG' => 'text-bg-warning',
-                  'BATAL' => 'text-bg-danger',
-                  default => 'text-bg-secondary'
+                  'BATAL'   => 'text-bg-danger',
+                  default   => 'text-bg-secondary'
                 };
               @endphp
               <span class="badge {{ $payClass }}">{{ $s->status_pembayaran }}</span>
               @if($s->paid_at)
-                <div class="text-muted small mt-1">Paid: {{ \Carbon\Carbon::parse($s->paid_at)->format('d/m/Y H:i') }}</div>
+                <div class="text-muted small mt-1">{{ \Carbon\Carbon::parse($s->paid_at)->format('d/m/Y') }}</div>
               @endif
             </td>
 
-            <td>
+            <td class="text-center">
               @if($s->bukti_bayar_path)
-                <div class="d-flex gap-2 align-items-center">
-                  <a class="btn btn-sm btn-outline-secondary"
-                     href="{{ asset('storage/'.$s->bukti_bayar_path) }}" target="_blank">
-                    Lihat
-                  </a>
-                  <div class="text-muted small">{{ basename($s->bukti_bayar_path) }}</div>
-                </div>
+                <a class="btn btn-sm btn-outline-primary"
+                   href="{{ route('files.view', $s->bukti_bayar_path) }}" target="_blank">
+                  Lihat Bukti
+                </a>
               @else
-                <div class="text-muted small">Belum ada</div>
+                <span class="text-muted small">Belum ada</span>
               @endif
             </td>
 
@@ -138,7 +132,7 @@
                           <option value="COD" {{ ($s->tipe_bayar==='COD')?'selected':'' }}>COD</option>
                           <option value="COT" {{ ($s->tipe_bayar==='COT')?'selected':'' }}>COT</option>
                         </select>
-                        <div class="text-muted small mt-1">Jika COT dan status LUNAS → wajib upload bukti.</div>
+                        <div class="text-muted small mt-1">Jika COT + LUNAS → wajib upload bukti.</div>
                       </div>
 
                       <div class="col-md-4">
@@ -154,8 +148,9 @@
                         <label class="form-label fw-semibold">Upload Bukti (jpg/png/pdf)</label>
                         <input type="file" name="bukti_bayar" class="form-control">
                         @if($s->bukti_bayar_path)
-                          <div class="text-muted small mt-1">
-                            Saat ini: {{ basename($s->bukti_bayar_path) }}
+                          <div class="mt-1">
+                            <a href="{{ route('files.view', $s->bukti_bayar_path) }}" target="_blank"
+                               class="small text-primary">Lihat bukti saat ini</a>
                           </div>
                         @endif
                       </div>
@@ -177,7 +172,6 @@
                         <div class="fw-semibold">Rp {{ number_format($s->harga_total,0,',','.') }}</div>
                       </div>
                     </div>
-
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
@@ -196,18 +190,6 @@
         </tbody>
       </table>
     </div>
-
   </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', ()=>{
-  const all = document.getElementById('checkAll');
-  if(all){
-    all.addEventListener('change', ()=>{
-      document.querySelectorAll('.ck').forEach(x => x.checked = all.checked);
-    });
-  }
-});
-</script>
 @endsection

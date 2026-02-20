@@ -42,6 +42,21 @@
         <div class="fw-semibold small">{{ $invoice->created_at->format('d/m/Y') }}</div>
       </div>
     </div>
+
+    @if($invoice->payment_proof_path)
+      <div class="mt-3 pt-3 border-top">
+        <div class="text-muted small mb-1">Bukti Pembayaran</div>
+        <a href="{{ route('files.view', $invoice->payment_proof_path) }}" target="_blank"
+           class="btn btn-sm btn-outline-primary">
+          Lihat Bukti Pembayaran
+        </a>
+        @if($invoice->paid_at)
+          <span class="text-muted small ms-2">
+            Dibayar: {{ \Carbon\Carbon::parse($invoice->paid_at)->format('d/m/Y H:i') }}
+          </span>
+        @endif
+      </div>
+    @endif
   </div>
 </div>
 
@@ -64,9 +79,9 @@
           <label class="form-label fw-semibold">Bukti Pembayaran (jpg/png/pdf)</label>
           <input type="file" name="proof" class="form-control">
           @if($invoice->payment_proof_path)
-            <div class="text-muted small mt-1">
-              Sudah ada:
-              <a href="{{ asset('storage/'.$invoice->payment_proof_path) }}" target="_blank">Lihat bukti</a>
+            <div class="mt-1">
+              <a href="{{ route('files.view', $invoice->payment_proof_path) }}" target="_blank"
+                 class="small text-primary">Lihat bukti saat ini</a>
             </div>
           @endif
         </div>
@@ -89,7 +104,7 @@
             <th>Penerima</th>
             <th>Tujuan</th>
             <th>Total</th>
-            <th>Status Bayar Nota</th>
+            <th>Status Bayar</th>
           </tr>
         </thead>
         <tbody>
@@ -100,10 +115,14 @@
               <td class="text-center">{{ $it->tujuan ?? ($it->shipment->tujuan ?? '-') }}</td>
               <td class="text-end">Rp {{ number_format($it->nilai ?? 0, 0, ',', '.') }}</td>
               <td class="text-center">
-                @php $sp = $it->shipment->status_pembayaran ?? '-';
-                $spClass = match($sp){'LUNAS'=>'text-bg-success','PIUTANG'=>'text-bg-warning','BATAL'=>'text-bg-danger',default=>'text-bg-secondary'};
+                @php
+                  $sp = $it->shipment->status_pembayaran ?? '-';
+                  $spCls = match($sp){
+                    'LUNAS'=>'text-bg-success','PIUTANG'=>'text-bg-warning',
+                    'BATAL'=>'text-bg-danger',default=>'text-bg-secondary'
+                  };
                 @endphp
-                <span class="badge {{ $spClass }}">{{ $sp }}</span>
+                <span class="badge {{ $spCls }}">{{ $sp }}</span>
               </td>
             </tr>
           @endforeach
