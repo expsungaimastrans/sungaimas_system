@@ -212,10 +212,16 @@
               @endif
             </td>
 
-            {{-- AKSI --}}
+            {{-- AKSI <a href="/shipments/{{ $s->id }}/pdf" class="btn btn-sm btn-outline-secondary">PDF</a> --}}
             <td class="text-center">
               <div class="d-flex flex-wrap justify-content-center gap-2">
-                <a href="/shipments/{{ $s->id }}/pdf" class="btn btn-sm btn-outline-secondary">PDF</a>
+                
+                <a href="{{ route('shipments.pdf', $s->id) }}" class="btn btn-sm btn-outline-secondary">
+                  PDF Full
+                </a>
+                <a href="{{ route('shipments.pdfHalf', $s->id) }}" class="btn btn-sm btn-outline-secondary">
+                  PDF Half
+                </a>
                 <a href="/shipments/{{ $s->id }}/edit" class="btn btn-sm btn-outline-primary">Edit</a>
                 <a href="/shipments/{{ $s->id }}/success" class="btn btn-sm btn-brand">WA/Download</a>
               </div>

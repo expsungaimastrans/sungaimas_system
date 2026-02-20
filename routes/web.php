@@ -39,10 +39,13 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:owner,admin,finance')->group(function () {
         Route::get('/shipments',              [ShipmentController::class, 'index'])->name('shipments.index');
         Route::get('/shipments/{id}/pdf',     [ShipmentController::class, 'pdf'])->name('shipments.pdf');
+        Route::get('/shipments/{id}/pdf-half', [ShipmentController::class, 'pdfHalf'])->name('shipments.pdfHalf');
         Route::get('/shipments/{id}/success', [ShipmentController::class, 'success'])->name('shipments.success');
         Route::get('/api/shipments/search',   [ShipmentController::class, 'searchJson'])->name('shipments.search');
         Route::get('/api/shipments/{id}',     [ShipmentController::class, 'showJson'])->name('shipments.showJson');
     });
+
+    
 
     Route::middleware('role:owner,admin')->group(function () {
         Route::get('/shipments/create',    [ShipmentController::class, 'create'])->name('shipments.create');

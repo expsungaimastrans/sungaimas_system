@@ -281,17 +281,33 @@ public function exportCsv(Request $request)
 
     public function pdf($id)
 {
-    $shipment = Shipment::with('items')->findOrFail($id);
+    $shipment = Shipment::with(['items'])->findOrFail($id);
 
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('shipments.pdf', [
-            'shipment' => $shipment,
-        ])
-        // 9.5 x 11 inch dalam milimeter (DomPDF pakai mm)
-        ->setPaper([0, 0, 241.3, 279.4], 'portrait');
+    // 9.5 inch x 11 inch dalam satuan points (1 inch = 72 pt)
+    $width  = 9.5 * 72; // 684
+    $height = 11  * 72; // 792
+
+    $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
+        ->setPaper([0, 0, $width, $height], 'portrait');
 
     $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
     return $pdf->stream('nota-' . $fileNo . '.pdf');
+}
+
+public function pdfHalf($id)
+{
+    $shipment = Shipment::with('items')->findOrFail($id);
+
+    // Half form: 9.5" x 5.5"
+    $halfPaper = [0, 0, 684, 396];
+
+    $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
+        ->setPaper($halfPaper, 'portrait');
+
+    $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
+
+    return $pdf->stream('nota-half-' . $fileNo . '.pdf');
 }
 
 

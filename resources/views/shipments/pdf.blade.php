@@ -145,5 +145,12 @@
   </tr>
 </table>
 
+<style>
+    * { font-family: 'Courier New', monospace; }
+    body { margin: 0; padding: 10px; }
+
+    .page-break { page-break-inside: avoid; }
+</style>
+
 </body>
 </html>
