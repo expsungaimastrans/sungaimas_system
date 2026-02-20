@@ -9,7 +9,7 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'shipment_id',
-        'amount',   // kolom lama - tetap ada
+        # 'amount',   // kolom lama - tetap ada
         'no_nota',
         'penerima',
         'tujuan',

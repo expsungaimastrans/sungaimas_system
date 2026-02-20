@@ -111,18 +111,16 @@ class FinanceController extends Controller
         ])->values()]);
     }
 
-    // Helper: buat InvoiceItem dengan isi KEDUA kolom lama (amount) dan baru (nilai)
     private function createInvoiceItem(array $data): InvoiceItem
     {
-        $nilai = (float) ($data['nilai'] ?? $data['amount'] ?? 0);
+        $nilai = (float) ($data['nilai'] ?? 0);
         return InvoiceItem::create([
             'invoice_id'  => $data['invoice_id'],
             'shipment_id' => $data['shipment_id'],
-            'amount'      => $nilai,   // kolom lama
             'no_nota'     => $data['no_nota']  ?? null,
             'penerima'    => $data['penerima'] ?? null,
             'tujuan'      => $data['tujuan']   ?? null,
-            'nilai'       => $nilai,   // kolom baru
+            'nilai'       => $nilai,
         ]);
     }
 
