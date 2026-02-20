@@ -19,7 +19,7 @@
 </head>
 <body>
 
-{{-- ===== HEADER: logo kiri, judul center, no manifest kanan ===== --}}
+{{-- ===== HEADER ===== --}}
 <table class="no-border" style="margin-bottom:10px;">
   <tr>
     <td width="35%" valign="top">
@@ -38,12 +38,10 @@
         </tr>
       </table>
     </td>
-
     <td width="35%" valign="middle">
       <div class="manifest-title">MANIFEST BARANG</div>
       <div class="manifest-sub">No: {{ $manifest->no_manifest }}</div>
     </td>
-
     <td width="30%" valign="top" style="text-align:right;">
       Manifest Ke-{{ $manifest->manifest_ke }}<br>
       Tgl Muat: {{ \Carbon\Carbon::parse($manifest->tanggal_muat)->format('d/m/Y') }}
@@ -69,42 +67,78 @@
   </tr>
 </table>
 
-{{-- ===== TABEL — pakai $manifest->items (ManifestItem), tanpa kolom Koli & Tipe ===== --}}
-@php $no = 1; $totalHarga = 0; @endphp
+@php
+  // Urutan jalur: Labuan Bajo → Lembor → Ruteng → Borong → Aimere → Cancar → Bajawa → Soa → Bowae → Mbay → Ende
+  $jalurOrder = [
+    'labuan bajo' => 1,
+    'labuanbajo'  => 1,
+    'lembor'      => 2,
+    'ruteng'      => 3,
+    'borong'      => 4,
+    'aimere'      => 5,
+    'cancar'      => 6,
+    'bajawa'      => 7,
+    'soa'         => 8,
+    'bowae'       => 9,
+    'mbay'        => 10,
+    'nagekeo'     => 10,
+    'ende'        => 11,
+  ];
+
+  $sorted = $manifest->items->sortBy(function($item) use ($jalurOrder) {
+    $tujuan = strtolower(trim($item->tujuan ?? ''));
+    foreach ($jalurOrder as $key => $order) {
+      if (str_contains($tujuan, $key)) return $order;
+    }
+    return 99;
+  });
+
+  $no = 1;
+  $totalHarga = 0;
+@endphp
+
+{{-- ===== TABEL ===== --}}
 <table>
   <thead>
     <tr>
-      <th style="width:30px;">No</th>
-      <th style="width:100px;">Kode/Nota</th>
+      <th style="width:28px;">No</th>
+      <th style="width:90px;">Kode/Nota</th>
+      <th style="width:35px;">Koli</th>
+      <th style="width:120px;">Jenis Barang</th>
       <th>Pengirim</th>
       <th>Penerima</th>
-      <th style="width:55px;">Kg</th>
-      <th style="width:75px;">Tujuan</th>
-      <th style="width:110px;">Total</th>
-      <th style="width:100px;">Keterangan</th>
+      <th style="width:50px;">Kg</th>
+      <th style="width:70px;">Tujuan</th>
+      <th style="width:100px;">Total</th>
+      <th style="width:85px;">Keterangan</th>
     </tr>
   </thead>
   <tbody>
-    @foreach($manifest->items as $item)
+    @foreach($sorted as $item)
       @php $totalHarga += (float)($item->harga ?? 0); @endphp
       <tr>
         <td class="text-center">{{ $no++ }}</td>
         <td class="text-center">{{ $item->kode ?? '-' }}</td>
+        <td class="text-center">{{ $item->koli ?? '-' }}</td>
+        <td style="font-size:10px;">{{ $item->jenis_barang ?? '-' }}</td>
         <td>{{ $item->pengirim ?? '-' }}</td>
         <td>{{ $item->penerima ?? '-' }}</td>
         <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : '-' }}</td>
         <td class="text-center">{{ $item->tujuan ?? '-' }}</td>
         <td class="text-right">Rp {{ number_format((float)($item->harga ?? 0), 0, ',', '.') }}</td>
-        <td>{{ $item->keterangan ?? '' }}</td>
+        <td style="font-size:10px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
     <tr class="summary-row">
-      <td colspan="6" class="text-right">TOTAL</td>
+      <td colspan="8" class="text-right">TOTAL</td>
       <td class="text-right">Rp {{ number_format($totalHarga, 0, ',', '.') }}</td>
       <td></td>
     </tr>
   </tbody>
 </table>
+
+<br>
+
 
 </body>
 </html>
