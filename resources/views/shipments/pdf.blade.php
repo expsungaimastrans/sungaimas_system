@@ -11,7 +11,7 @@
   .center { text-align: center; }
   .right  { text-align: right; }
   .bold   { font-weight: bold; }
-  .small  { font-size: 12px; }
+  .small  { font-size: 10px; }
   .nowrap { white-space: nowrap; }
 </style>
 </head>
