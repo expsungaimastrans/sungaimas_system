@@ -8,60 +8,61 @@
   body { margin: 20px; }
   table { width: 100%; border-collapse: collapse; }
 
-  /* Header */
-  .no-border td { border: none; padding: 2px 4px; }
-  .manifest-title {
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-    letter-spacing: 1px;
-  }
-  .manifest-sub { font-size: 12px; text-align: center; color: #333; }
+  .company-name { font-size: 13px; font-weight: bold; }
+  .manifest-number { font-size: 22px; font-weight: bold; text-align: right; padding-bottom: 6px; }
 
-  /* Info bar */
-  .info-bar { width: 100%; margin-bottom: 10px; }
-  .info-bar td { border: none; padding: 2px 6px; }
-  .info-bar .label { font-weight: bold; width: 95px; }
+  .info-grid { width: 100%; border-collapse: collapse; }
+  .info-grid td { border: none; padding: 2px 4px; font-size: 11px; }
+  .info-grid .lbl { font-weight: bold; width: 110px; }
 
-  /* Tabel data */
-  th {
-    background: #ddd;
-    border: 1px solid #555;
-    padding: 5px 4px;
+  .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .data-table th {
+    background: #f0f0f0;
+    border: 1px solid #333;
+    padding: 6px 4px;
     font-weight: bold;
     text-align: center;
     font-size: 11px;
   }
-  td {
-    border: 1px solid #555;
+  .data-table td {
+    border-top: 1px dashed #999;
+    border-bottom: 1px dashed #999;
+    border-left: 1px solid #333;
+    border-right: 1px solid #333;
     padding: 4px 5px;
     vertical-align: middle;
   }
+  .data-table .summary td {
+    border-top: 2px solid #333;
+    border-bottom: 1px solid #333;
+    font-weight: bold;
+    background: #f5f5f5;
+    padding: 5px;
+  }
+  /* Baris jeda antar kota */
+  .data-table .spacer td {
+    border: none;
+    padding: 3px 0;
+    background: #fff;
+  }
+
   .text-center { text-align: center; }
   .text-right  { text-align: right; }
-  .summary-row td {
-    font-weight: bold;
-    background: #efefef;
-    border: 1px solid #555;
-  }
 </style>
 </head>
 <body>
 
 {{-- ===== HEADER ===== --}}
-<table class="no-border" style="margin-bottom:8px;">
+<table style="margin-bottom:10px; border-collapse:collapse;">
   <tr>
-    {{-- Kiri: logo + alamat --}}
-    <td width="30%" valign="middle">
-      <table class="no-border">
+    <td style="width:40%; vertical-align:middle;">
+      <table style="border-collapse:collapse;">
         <tr>
-          <td style="border:none; width:55px; vertical-align:middle;">
-            <img src="{{ public_path('logo.png') }}" width="55" alt="Logo">
+          <td style="border:none; width:60px; vertical-align:middle; padding-right:8px;">
+            <img src="{{ public_path('logo.png') }}" width="58" alt="Logo">
           </td>
-          <td style="border:none; vertical-align:middle; padding-left:6px; line-height:1.5;">
-            <strong style="font-size:12px;">Sungai Mas Trans</strong><br>
+          <td style="border:none; vertical-align:middle; line-height:1.55;">
+            <span class="company-name">Sungai Mas Trans</span><br>
             Jl. Pesapen Selatan No.2/A<br>
             Sungai Mas - Indonesia 45311<br>
             Telp. (031) 3550447<br>
@@ -70,107 +71,129 @@
         </tr>
       </table>
     </td>
-
-    {{-- Tengah: judul (digeser sedikit ke kanan dengan padding-left) --}}
-    <td width="45%" valign="middle" style="text-align:center; padding-left:30px;">
-      <div class="manifest-title">MANIFEST BARANG</div>
-      <div class="manifest-sub">No: <strong>{{ $manifest->no_manifest }}</strong></div>
-    </td>
-
-    {{-- Kanan: info singkat --}}
-    <td width="25%" valign="middle" style="text-align:right; padding-right:4px; line-height:1.7;">
-      <strong>Manifest Ke-{{ $manifest->manifest_ke }}</strong><br>
-      Tgl Muat: {{ \Carbon\Carbon::parse($manifest->tanggal_muat)->format('d/m/Y') }}
+    <td style="width:60%; vertical-align:top; padding-left:20px;">
+      <div class="manifest-number">MANIFEST {{ $manifest->manifest_ke }}</div>
+      <table class="info-grid">
+        <tr>
+          <td class="lbl">Sopir/Nopol</td>
+          <td>: {{ $manifest->sopir }} /{{ $manifest->nopol }}</td>
+        </tr>
+        <tr>
+          <td class="lbl">Tanggal Muat</td>
+          <td>: {{ \Carbon\Carbon::parse($manifest->tanggal_muat)->format('d/m/Y') }}</td>
+        </tr>
+        <tr>
+          <td class="lbl">Nama Kapal</td>
+          <td>: {{ $manifest->nama_kapal ?: '-' }}</td>
+        </tr>
+        <tr>
+          <td class="lbl">Keberangkatan</td>
+          <td>: {{ $manifest->keberangkatan ?: '-' }}</td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
 
-<hr style="border:0; border-top:2px solid #333; margin:6px 0 10px 0;">
-
-{{-- ===== INFO BAR 2 kolom ===== --}}
-<table class="info-bar" style="margin-bottom:12px;">
-  <tr>
-    <td class="label">Tanggal Muat</td>
-    <td>: {{ \Carbon\Carbon::parse($manifest->tanggal_muat)->format('d-m-Y') }}</td>
-    <td class="label">Sopir</td>
-    <td>: {{ $manifest->sopir }}</td>
-  </tr>
-  <tr>
-    <td class="label">Manifest Ke</td>
-    <td>: {{ $manifest->manifest_ke }}</td>
-    <td class="label">Nopol</td>
-    <td>: {{ $manifest->nopol }}</td>
-  </tr>
-</table>
+<hr style="border:0; border-top:1px solid #333; margin:4px 0 0 0;">
 
 @php
   $jalurOrder = [
-    'labuan bajo' => 1,  'labuanbajo'  => 1,
+    'labuan bajo' => 1, 'labuanbajo' => 1,
     'lembor'      => 2,
     'ruteng'      => 3,
     'borong'      => 4,
-    'aimere'      => 5,
+    'aimere'      => 5, 'aimire' => 5,
     'cancar'      => 6,
     'bajawa'      => 7,
     'soa'         => 8,
     'bowae'       => 9,
-    'mbay'        => 10, 'nagekeo'     => 10,
+    'mbay'        => 10, 'nagekeo' => 10,
     'ende'        => 11,
   ];
 
-  $sorted = $manifest->items->sortBy(function($item) use ($jalurOrder) {
-    $tujuan = strtolower(trim($item->tujuan ?? ''));
+  // Fungsi untuk ambil order kota
+  $getOrder = function($tujuan) use ($jalurOrder) {
+    $t = strtolower(trim($tujuan ?? ''));
     foreach ($jalurOrder as $key => $order) {
-      if (str_contains($tujuan, $key)) return $order;
+      if (str_contains($t, $key)) return $order;
     }
     return 99;
-  });
+  };
 
-  $no = 1;
-  $totalHarga = 0;
+  $sorted = $manifest->items->sortBy(fn($item) => $getOrder($item->tujuan));
+
+  $no          = 1;
+  $totalHarga  = 0;
+  $totalKoli   = 0;
+  $prevTujuan  = null; // track kota sebelumnya
 @endphp
 
-{{-- ===== TABEL ===== --}}
-<table>
+<table class="data-table">
   <thead>
     <tr>
-      <th style="width:3%;">No</th>
-      <th style="width:10%;">Kode/Nota</th>
+      <th style="width:3%;">No.</th>
+      <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
-      <th style="width:14%;">Jenis Barang</th>
-      <th style="width:16%;">Pengirim</th>
-      <th style="width:16%;">Penerima</th>
+      <th style="width:15%;">Jenis Barang</th>
+      <th style="width:13%;">Pengirim</th>
       <th style="width:5%;">Kg</th>
+      <th style="width:13%;">Penerima</th>
       <th style="width:8%;">Tujuan</th>
-      <th style="width:12%;">Total</th>
-      <th style="width:12%;">Keterangan</th>
+      <th style="width:11%;">Harga</th>
+      <th style="width:19%;">Keterangan</th>
     </tr>
   </thead>
   <tbody>
     @foreach($sorted as $item)
-      @php $totalHarga += (float)($item->harga ?? 0); @endphp
+      @php
+        $harga      = (float)($item->harga ?? 0);
+        $koli       = (int)($item->koli ?? 0);
+        $tujuanNow  = strtolower(trim($item->tujuan ?? ''));
+        $totalHarga += $harga;
+        $totalKoli  += $koli;
+      @endphp
+
+      {{-- Baris jeda jika kota berubah (bukan baris pertama) --}}
+      @if($prevTujuan !== null && $tujuanNow !== $prevTujuan)
+        <tr class="spacer">
+          <td colspan="10"></td>
+        </tr>
+      @endif
+      @php $prevTujuan = $tujuanNow; @endphp
+
       <tr>
-        <td class="text-center">{{ $no++ }}</td>
+        <td class="text-center">{{ $no++ }}.</td>
         <td class="text-center" style="font-size:10px;">{{ $item->kode ?? '-' }}</td>
-        <td class="text-center">{{ $item->koli ?? '-' }}</td>
+        <td class="text-center">{{ $koli ?: '-' }}</td>
         <td style="font-size:10px;">{{ $item->jenis_barang ?? '-' }}</td>
-        <td style="font-size:10px;">{{ $item->pengirim ?? '-' }}</td>
+        <td style="font-size:10px;">{{ $item->pengirim ?? '' }}</td>
+        <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
         <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
-        <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : '-' }}</td>
         <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
-        <td class="text-right">Rp {{ number_format((float)($item->harga ?? 0), 0, ',', '.') }}</td>
+        <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
         <td style="font-size:10px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
-    <tr class="summary-row">
-      <td colspan="8" class="text-right">TOTAL</td>
-      <td class="text-right">Rp {{ number_format($totalHarga, 0, ',', '.') }}</td>
+
+    <tr class="summary">
+      <td colspan="2" class="text-right">Total</td>
+      <td class="text-center">{{ $totalKoli }}</td>
+      <td colspan="3"></td>
+      <td colspan="2" class="text-right">Total</td>
+      <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
       <td></td>
     </tr>
   </tbody>
 </table>
 
-<br>
+<table style="margin-top:8px; border-collapse:collapse;">
+  <tr>
+    <td style="border:none; font-weight:bold;">
+      No Manifest: {{ $manifest->no_manifest }}
+    </td>
+  </tr>
+</table>
 
 </body>
 </html>
