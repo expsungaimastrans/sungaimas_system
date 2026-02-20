@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <title>Nota {{ $shipment->no_nota }}</title>
 <style>
-  body { font-family: "Times New Roman", serif; font-size: 14px; }
-  table { font-size: 14px; width: 100%; border-collapse: collapse; }
+  body { font-family: "Times New Roman", serif; font-size: 12px; }
+  table { font-size: 12px; width: 100%; border-collapse: collapse; }
   .line td { border-bottom: 1px solid #000; padding: 3px 0; }
-  .box td, .box th { border: 1px solid #000; padding: 4px; }
+  .box td, .box th { border: 1px solid #000; padding: 2px; }
   .center { text-align: center; }
   .right  { text-align: right; }
   .bold   { font-weight: bold; }
