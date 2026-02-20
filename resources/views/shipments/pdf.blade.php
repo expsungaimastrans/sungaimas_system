@@ -4,10 +4,16 @@
 <meta charset="utf-8">
 <title>Nota {{ $shipment->no_nota }}</title>
 <style>
+     @page {
+        margin-top: -3mm;   /* negatif = geser ke ATAS, positif = ke BAWAH */
+        margin-left: -3mm;  /* negatif = geser ke KIRI, positif = ke KANAN */
+        margin-right: 0mm;
+        margin-bottom: 0mm;
+    }
   body { font-family: "Times New Roman", serif; font-size: 12px; }
   table { font-size: 12px; width: 100%; border-collapse: collapse; }
-  .line td { border-bottom: 1px solid #000; padding: 3px 0; }
-  .box td, .box th { border: 1px solid #000; padding: 2px; }
+  .line td { border-bottom: 1px solid #000; padding: 1px 0; }
+  .box td, .box th { border: 1px solid #000; padding: 1px; }
   .center { text-align: center; }
   .right  { text-align: right; }
   .bold   { font-weight: bold; }

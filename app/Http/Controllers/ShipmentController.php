@@ -304,6 +304,8 @@ public function pdfHalf($id)
 
     $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
         ->setPaper($halfPaper, 'portrait');
+
+        
         
 
     $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
