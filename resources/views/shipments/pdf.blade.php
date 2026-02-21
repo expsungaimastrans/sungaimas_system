@@ -4,10 +4,15 @@
 <meta charset="utf-8">
 <title>Nota {{ $shipment->no_nota }}</title>
 <style>
-  body { font-family: "Times New Roman", serif; font-size: 12px; }
+  body {
+    font-family: "Times New Roman", serif;
+    font-size: 11px;
+    margin: 0;
+    padding: 0;
+  }
   table { width: 100%; border-collapse: collapse; }
   .line td { border-bottom: 1px solid #000; padding: 3px 0; }
-  .box td, .box th { border: 1px solid #000; padding: 4px; }
+  .box td, .box th { border: 1px solid #000; padding: 3px 4px; }
   .center { text-align: center; }
   .right  { text-align: right; }
   .bold   { font-weight: bold; }
@@ -20,16 +25,16 @@
 {{-- ===== HEADER ===== --}}
 <table>
   <tr>
-    <td width="40%" valign="top">
+    <td width="42%" valign="top">
       <table>
         <tr>
-          <td width="30%" valign="top">
+          <td width="22%" valign="top">
             @php $logoPath = public_path('logo.png'); @endphp
             @if(file_exists($logoPath))
-              <img src="{{ $logoPath }}" width="80" alt="Logo">
+              <img src="{{ $logoPath }}" width="55" alt="Logo">
             @endif
           </td>
-          <td width="70%" valign="top">
+          <td width="78%" valign="top" style="line-height:1.5;">
             <strong>Sungai Mas Trans</strong><br>
             Jl. Pesapen Selatan No.2/A<br>
             Sungai Mas - Indonesia 45311<br>
@@ -40,18 +45,18 @@
       </table>
     </td>
 
-    <td width="40%" class="center" valign="middle">
-      <strong style="font-size:14px;">NOTA PENGIRIMAN</strong>
+    <td width="33%" class="center" valign="middle">
+      <strong style="font-size:13px;">NOTA PENGIRIMAN</strong>
     </td>
 
-    <td width="20%" class="right" valign="top">
+    <td width="25%" class="right" valign="top" style="line-height:1.6;">
       <strong>{{ $shipment->no_nota }}</strong><br>
       {{ \Carbon\Carbon::parse($shipment->tanggal)->format('d F Y') }}
     </td>
   </tr>
 </table>
 
-<hr style="border:1px solid #000; margin:6px 0;">
+<hr style="border:1px solid #000; margin:4px 0;">
 
 {{-- ===== PENGIRIM / PENERIMA ===== --}}
 <table class="line">
@@ -69,35 +74,35 @@
 
 <br>
 
-{{-- ===== TABEL BARANG (kg 1 desimal, m³ 1 desimal) ===== --}}
+{{-- ===== TABEL BARANG ===== --}}
 <table class="box">
   <thead>
     <tr class="center bold">
-      <th width="6%">KOLI</th>
+      <th width="7%">KOLI</th>
       <th width="8%">KG</th>
       <th width="8%">M³</th>
       <th width="8%">TARIF</th>
-      <th width="36%">BARANG</th>
+      <th width="37%">BARANG</th>
       <th width="16%">HARGA</th>
-      <th width="18%">SUB TOTAL</th>
+      <th width="16%">SUB TOTAL</th>
     </tr>
   </thead>
   <tbody>
     @foreach($shipment->items as $item)
       @php
-        $koli = (float)($item->koli       ?? 0);
-        $kg   = (float)($item->berat_kg   ?? 0);
-        $m3   = (float)($item->kubikasi_m3 ?? 0);
+        $koli  = (float)($item->koli        ?? 0);
+        $kg    = (float)($item->berat_kg    ?? 0);
+        $m3    = (float)($item->kubikasi_m3 ?? 0);
         $tarif = strtoupper($item->satuan_tarif ?? 'UNIT');
       @endphp
       <tr>
         <td class="center">{{ $koli ? number_format($koli, 0, '.', '') : '-' }}</td>
-        <td class="center">{{ $kg ? number_format($kg, 1, '.', '') : '-' }}</td>
-        <td class="center">{{ $m3 ? number_format($m3, 1, '.', '') : '-' }}</td>
+        <td class="center">{{ $kg   ? number_format($kg,   1, '.', '') : '-' }}</td>
+        <td class="center">{{ $m3   ? number_format($m3,   1, '.', '') : '-' }}</td>
         <td class="center nowrap">{{ $tarif }}</td>
         <td>{{ strtoupper($item->nama_barang ?? '') }}</td>
         <td class="right">{{ number_format($item->harga_satuan ?? 0, 0, ',', '.') }}</td>
-        <td class="right">{{ number_format($item->subtotal ?? 0, 0, ',', '.') }}</td>
+        <td class="right">{{ number_format($item->subtotal     ?? 0, 0, ',', '.') }}</td>
       </tr>
     @endforeach
   </tbody>
@@ -107,18 +112,18 @@
 
 <table>
   <tr>
-    <td width="70%"></td>
-    <td width="30%" class="right bold">
+    <td width="65%"></td>
+    <td width="35%" class="right bold">
       TOTAL &nbsp;&nbsp; Rp {{ number_format($shipment->harga_total, 0, ',', '.') }}
     </td>
   </tr>
 </table>
 
-<hr style="border:1px solid #000; margin:6px 0;">
+<hr style="border:1px solid #000; margin:4px 0;">
 
 {{-- ===== SYARAT ===== --}}
 <div class="small">
-  <ol>
+  <ol style="margin:2px 0; padding-left:16px;">
     <li>Barang cairan dan mudah pecah karena pengepakan tidak sempurna menjadi tanggung jawab pengirim.</li>
     <li>Dilarang mengirim barang yang mudah meledak, terbakar dan membahayakan keselamatan umum.</li>
     <li>Ganti rugi maksimal 10x biaya pengiriman.</li>
@@ -131,7 +136,7 @@
 {{-- ===== FOOTER ===== --}}
 <table>
   <tr>
-    <td width="50%">
+    <td width="50%" style="line-height:1.6;">
       Transfer Bank:<br>
       BRI : 221601000224568<br>
       BNI : 0050385081<br>
