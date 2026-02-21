@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>Nota {{ $shipment->no_nota }}</title>
 <style>
+  @page { margin-left: -2mm;}
   body {
     font-family: "Times New Roman", serif;
     font-size: 11px;
