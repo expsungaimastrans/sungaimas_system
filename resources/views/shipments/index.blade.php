@@ -216,9 +216,7 @@
             <td class="text-center">
               <div class="d-flex flex-wrap justify-content-center gap-2">
                 
-                <a href="{{ route('shipments.pdf', $s->id) }}" class="btn btn-sm btn-outline-secondary">
-                  PDF Full
-                </a>
+              
                 <a href="{{ route('shipments.pdfHalf', $s->id) }}" class="btn btn-sm btn-outline-secondary">
                   PDF Half
                 </a>
