@@ -304,10 +304,10 @@ public function pdfHalf($id)
 
     $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
         ->setPaper($halfPaper, 'portrait')
-        ->setOption('margin-top', 6)
-        ->setOption('margin-right', 6)
-        ->setOption('margin-bottom', 6)
-        ->setOption('margin-left', 6);
+        ->setOption('margin-top', 2)
+        ->setOption('margin-right', 2)
+        ->setOption('margin-bottom', 2)
+        ->setOption('margin-left', 2);
 
     $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
