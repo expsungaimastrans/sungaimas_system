@@ -6,7 +6,7 @@
 <style>
   body {
     font-family: "Times New Roman", serif;
-    font-size: 11px;
+    font-size: 14px;
     margin: 0;
     padding: 0;
   }
