@@ -5,7 +5,7 @@
 <title>Manifest - {{ $manifest->no_manifest }}</title>
 <style>
   * { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
-  body { margin: 20px; }
+  body { margin: 10px; }
   table { width: 100%; border-collapse: collapse; }
 
   .company-name { font-size: 13px; font-weight: bold; }
