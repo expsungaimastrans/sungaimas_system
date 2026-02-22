@@ -132,7 +132,6 @@
 <table class="data-table">
   <thead>
     <tr>
-      <th style="width:3%;">No.</th>
       <th style="width:60px;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
