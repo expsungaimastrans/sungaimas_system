@@ -135,7 +135,7 @@
       <th style="width:60px;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
-      <th style="width:15%;">Jenis Barang</th>
+      <th style="width:18%;">Jenis Barang</th>
       <th style="width:13%;">Pengirim</th>
       <th style="width:5%;">Kg</th>
       <th style="width:13%;">Penerima</th> 
