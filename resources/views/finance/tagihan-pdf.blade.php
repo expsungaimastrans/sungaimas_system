@@ -81,7 +81,6 @@
       <th width="6%">Koli</th>
       <th width="6%">Kg</th>
       <th width="15%">Detail Barang</th>
-      <th width="7%">Status</th>
       <th width="8%">Total</th>
     </tr>
   </thead>
@@ -111,7 +110,6 @@
         <td class="center">{{ $totalKoli }}</td>
         <td class="center">{{ $totalKg }}</td>
         <td>{{ $barangList }}</td>
-        <td class="center">{{ $s->status_pembayaran }}</td>
         <td class="right">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
       </tr>
     @endforeach
