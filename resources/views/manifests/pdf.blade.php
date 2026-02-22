@@ -138,9 +138,9 @@
       <th style="width:15%;">Jenis Barang</th>
       <th style="width:13%;">Pengirim</th>
       <th style="width:5%;">Kg</th>
-      <th style="width:13%;">Penerima</th>
-      <th style="width:8%;">Tujuan</th>
+      <th style="width:13%;">Penerima</th> 
       <th style="width:11%;">Harga</th>
+      <th style="width:8%;">Tujuan</th>
       <th style="width:19%;">Keterangan</th>
     </tr>
   </thead>
@@ -176,8 +176,8 @@
         <td style="font-size:10px;">{{ $item->pengirim ?? '' }}</td>
         <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
         <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
-        <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
         <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
+        <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
         <td style="font-size:10px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
