@@ -149,10 +149,12 @@
     @foreach($sorted as $item)
       @php
         $harga      = (float)($item->harga ?? 0);
+        // Tanggal nota: pakai kolom `tanggal` kalau ada, kalau tidak pakai created_at
+      $tglNota = $s?->tanggal ?? $s?->created_at;
         $koli       = (int)($item->koli ?? 0);
         $tujuanNow  = strtolower(trim($item->tujuan ?? ''));
         $totalHarga += $harga;
-        $totalKoli  += $koli;
+        
       @endphp
 
       {{-- Baris jeda jika kota berubah (bukan baris pertama) --}}
@@ -182,9 +184,7 @@
     @endforeach
 
     <tr class="summary">
-      <td colspan="2" class="text-right">Total</td>
-      <td class="text-center">{{ $totalKoli }}</td>
-      <td colspan="3"></td>
+      
       <td colspan="2" class="text-right">Total</td>
       <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
       <td></td>
