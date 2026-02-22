@@ -186,9 +186,11 @@
 
     <tr class="summary">
       
-      <td colspan="2" class="text-right">Total</td>
-      <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
-      <td></td>
+      <tr>
+        <td colspan="9" class="right bold">Total</td>
+        <td class="right bold">{{ number_format($totalHarga,0,',','.') }}</td>
+        <td></td>
+    </tr>
     </tr>
   </tbody>
 </table>
