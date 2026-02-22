@@ -147,15 +147,17 @@
   </thead>
   <tbody>
     @foreach($sorted as $item)
-      @php
-        $harga      = (float)($item->harga ?? 0);
-        // Tanggal nota: pakai kolom `tanggal` kalau ada, kalau tidak pakai created_at
-      $tglNota = $s?->tanggal ?? $s?->created_at;
-        $koli       = (int)($item->koli ?? 0);
-        $tujuanNow  = strtolower(trim($item->tujuan ?? ''));
-        $totalHarga += $harga;
-        
-      @endphp
+        @php
+          $harga      = (float)($item->harga ?? 0);
+  
+          // Ambil tanggal nota dari kolom di $item (hasil join ke shipments)
+          $tglNotaRaw = $item->tanggal ?? $item->created_at ?? null;
+          $tglNota    = $tglNotaRaw ? \Carbon\Carbon::parse($tglNotaRaw)->format('d/m/Y') : '-';
+  
+          $koli       = (int)($item->koli ?? 0);
+          $tujuanNow  = strtolower(trim($item->tujuan ?? ''));
+          $totalHarga += $harga;
+        @endphp
 
       {{-- Baris jeda jika kota berubah (bukan baris pertama) --}}
       @if($prevTujuan !== null && $tujuanNow !== $prevTujuan)
@@ -165,12 +167,11 @@
       @endif
       @php $prevTujuan = $tujuanNow; @endphp
 
-        
-        
+      {{-- Baris data item --}}
 
       <tr>
         <td class="text-center">{{ $no++ }}.</td>
-        <td class="text-center" style="font-size:10px;">{{ $tglNota ? \Carbon\Carbon::parse($tglNota)->format('d/m/Y') : '-' }}</td>
+        <td class="text-center" style="font-size:10px;">{{ $tglNota }}</td>
         <td class="text-center" style="font-size:10px;">{{ $item->kode ?? '-' }}</td>
         <td class="text-center">{{ $koli ?: '-' }}</td>
         <td style="font-size:10px;">{{ $item->jenis_barang ?? '-' }}</td>
