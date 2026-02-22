@@ -170,7 +170,6 @@
       {{-- Baris data item --}}
 
       <tr>
-        <td class="text-center">{{ $no++ }}.</td>
         <td class="text-center" style="font-size:10px;">{{ $tglNota }}</td>
         <td class="text-center" style="font-size:10px;">{{ $item->kode ?? '-' }}</td>
         <td class="text-center">{{ $koli ?: '-' }}</td>
@@ -186,7 +185,7 @@
 
    <tr class="summary">
       <td colspan="2" class="text-right">Total</td>
-      
+      <td class="text-center">{{ "." }}</td>
       <td colspan="3"></td>
       <td colspan="2" class="text-right">Total</td>
       <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
