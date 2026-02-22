@@ -6,13 +6,12 @@
 <style>
   body { font-family:"Times New Roman", serif; font-size: 11px; }
   table { width:100%; border-collapse: collapse; }
-  .line td { border-bottom:1px solid #000; padding:4px 0; }
-  .box td, .box th { border:1px solid #000; padding:4px; vertical-align:top; }
+  .line td { border-bottom:1px solid #000; }
+  .box td, .box th { border:1px solid #000; padding:4px; }
   .center { text-align:center; }
   .right { text-align:right; }
   .bold { font-weight:bold; }
   .small { font-size:10px; }
-  .muted { color:#444; }
 </style>
 </head>
 <body>
@@ -24,12 +23,7 @@
       <table>
         <tr>
           <td width="30%" valign="top">
-            @php
-              $logoPath = public_path('logo.png');
-            @endphp
-            @if(file_exists($logoPath))
-              <img src="{{ $logoPath }}" width="80" alt="Logo">
-            @endif
+            <img src="{{ public_path('logo.png') }}" width="80">
           </td>
           <td width="70%" valign="top">
             <strong>Sungai Mas Trans</strong><br>
@@ -44,12 +38,12 @@
 
     <td width="35%" class="center">
       <div style="font-size:16px; font-weight:bold;">TAGIHAN</div>
-      <div class="small muted">Rekap beberapa nota pengiriman</div>
+      <div class="small">Rekap beberapa nota pengiriman</div>
     </td>
 
     <td width="20%" class="right">
       <strong>{{ $invoice->invoice_no }}</strong><br>
-      Tanggal: {{ ($invoice->created_at ?? now())->format('d F Y') }}
+      Tanggal: {{ $invoice->created_at?->format('d F Y') ?? now()->format('d F Y') }}
     </td>
   </tr>
 </table>
@@ -74,64 +68,61 @@
 
 <br>
 
-{{-- TABEL REKAP --}}
+{{-- TABEL REKAP (dengan kolom tambahan) --}}
 <table class="box">
   <thead>
     <tr class="center bold">
-      <th width="6%">No</th>
-      <th width="18%">No Nota</th>
-      <th width="22%">Penerima</th>
-      <th width="16%">Tujuan</th>
-      <th width="14%">Status Bayar</th>
-      <th width="24%">Total</th>
+      <th width="4%">No</th>
+      <th width="10%">No Nota</th>
+      <th width="12%">Penerima</th>
+      <th width="12%">Pengirim</th>
+      <th width="10%">Tujuan</th>
+      <th width="10%">No Manifest</th>
+      <th width="6%">Koli</th>
+      <th width="6%">Kg</th>
+      <th width="15%">Detail Barang</th>
+      <th width="7%">Status</th>
+      <th width="8%">Total</th>
     </tr>
   </thead>
   <tbody>
     @foreach($shipments as $i => $s)
+      @php
+        // total koli & kg dari item
+        $totalKoli = $s->items->sum(function($it){
+          return (float)($it->koli ?? $it->jumlah ?? 0);
+        });
+        $totalKg   = (float)$s->items->sum('berat_kg');
+
+        // daftar nama barang digabung
+        $barangList = $s->items->pluck('nama_barang')
+                        ->filter()
+                        ->implode(', ');
+
+        $manifestNo = optional($s->manifest)->no_manifest ?? $s->manifest_id;
+      @endphp
       <tr>
         <td class="center">{{ $i+1 }}</td>
         <td class="center">{{ $s->no_nota }}</td>
         <td>{{ $s->nama_penerima }}</td>
+        <td>{{ $s->nama_pengirim }}</td>
         <td class="center">{{ $s->tujuan }}</td>
+        <td class="center">{{ $manifestNo }}</td>
+        <td class="center">{{ $totalKoli }}</td>
+        <td class="center">{{ $totalKg }}</td>
+        <td>{{ $barangList }}</td>
         <td class="center">{{ $s->status_pembayaran }}</td>
-        <td class="right">Rp {{ number_format((float)$s->harga_total,0,',','.') }}</td>
+        <td class="right">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
       </tr>
     @endforeach
     <tr>
-      <td colspan="5" class="right bold">GRAND TOTAL</td>
+      <td colspan="10" class="right bold">GRAND TOTAL</td>
       <td class="right bold">Rp {{ number_format($grandTotal,0,',','.') }}</td>
     </tr>
   </tbody>
 </table>
 
 <br>
-
-{{-- DETAIL BARANG PER NOTA --}}
-@foreach($shipments as $s)
-  <div style="margin-top:10px;">
-    <div class="bold">Detail Nota: {{ $s->no_nota }} - {{ $s->nama_penerima }} ({{ $s->tujuan }})</div>
-    <table class="box" style="margin-top:4px;">
-      <thead>
-        <tr class="center bold">
-          <th width="10%">Koli</th>
-          <th width="10%">Kg</th>
-          <th width="60%">Barang</th>
-          <th width="20%">Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($s->items as $it)
-          <tr>
-            <td class="center">{{ (float)($it->koli ?? $it->jumlah ?? 0) }}</td>
-            <td class="center">{{ (float)($it->berat_kg ?? 0) }}</td>
-            <td>{{ strtoupper($it->nama_barang ?? '') }}</td>
-            <td class="right">Rp {{ number_format((float)($it->subtotal ?? 0),0,',','.') }}</td>
-          </tr>
-        @endforeach
-      </tbody>
-    </table>
-  </div>
-@endforeach
 
 <hr>
 
