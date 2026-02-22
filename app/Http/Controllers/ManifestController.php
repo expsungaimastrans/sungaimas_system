@@ -112,6 +112,7 @@ class ManifestController extends Controller
     public function pdf($id)
     {
         $manifest = Manifest::with('items')->findOrFail($id);
+        $items = $manifest->items()->with(['shipment.items'])->get();
 
         $pdf = Pdf::loadView('manifests.pdf', compact('manifest'))
             ->setPaper('a4', 'portrait');
