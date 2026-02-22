@@ -135,7 +135,7 @@
       <th style="width:60px;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
-      <th style="width:18%;">Detail Barang</th>
+      <th style="width:18%;">Jenis Barang</th>
       <th style="width:13%;">Pengirim</th>
       <th style="width:5%;">Kg</th>
       <th style="width:13%;">Penerima</th> 
@@ -146,41 +146,17 @@
   </thead>
   <tbody>
     @foreach($sorted as $item)
-      @php
-        $harga      = (float)($item->harga ?? 0);
-
-        // Ambil tanggal nota dari kolom di $item (hasil join ke shipments)
-        $tglNotaRaw = $item->tanggal ?? $item->created_at ?? null;
-        $tglNota    = $tglNotaRaw ? \Carbon\Carbon::parse($tglNotaRaw)->format('d/m/Y') : '-';
-
-        $koli       = (int)($item->koli ?? 0);
-        $tujuanNow  = strtolower(trim($item->tujuan ?? ''));
-
-        $totalHarga += $harga;
-        $totalKoli  += $koli;
-
-        // Kumpulkan detail barang: 1 barang = 1 baris dalam sel
-        $detailLines = [];
-
-        // 1) jenis_barang dari manifest_items (kalau ada) → baris pertama
-        if (!empty($item->jenis_barang)) {
-            $detailLines[] = strtoupper($item->jenis_barang);
-        }
-
-        // 2) barang dari shipment_items (jika relasi shipment.items ada)
-        if ($item->shipment && $item->shipment->items && $item->shipment->items->count()) {
-            foreach ($item->shipment->items as $brg) {
-                $line = trim(
-                    ($brg->jumlah ? $brg->jumlah.' ' : '') .
-                    ($brg->satuan ? $brg->satuan.' - ' : '') .
-                    ($brg->nama_barang ?? '')
-                );
-                if ($line !== '') {
-                    $detailLines[] = $line;
-                }
-            }
-        }
-      @endphp
+        @php
+          $harga      = (float)($item->harga ?? 0);
+  
+          // Ambil tanggal nota dari kolom di $item (hasil join ke shipments)
+          $tglNotaRaw = $item->tanggal ?? $item->created_at ?? null;
+          $tglNota    = $tglNotaRaw ? \Carbon\Carbon::parse($tglNotaRaw)->format('d/m/Y') : '-';
+  
+          $koli       = (int)($item->koli ?? 0);
+          $tujuanNow  = strtolower(trim($item->tujuan ?? ''));
+          $totalHarga += $harga;
+        @endphp
 
       {{-- Baris jeda jika kota berubah (bukan baris pertama) --}}
       @if($prevTujuan !== null && $tujuanNow !== $prevTujuan)
@@ -191,26 +167,14 @@
       @php $prevTujuan = $tujuanNow; @endphp
 
       {{-- Baris data item --}}
+
       <tr>
         <td class="text-center" style="font-size:10px;">{{ $tglNota }}</td>
         <td class="text-center" style="font-size:10px;">{{ $item->kode ?? '-' }}</td>
         <td class="text-center">{{ $koli ?: '-' }}</td>
-
-        {{-- DETAIL BARANG: multi-baris dalam satu sel --}}
-        <td style="font-size:10px;">
-          @if(count($detailLines))
-            @foreach($detailLines as $i => $ln)
-              {{ $ln }}@if(!$loop->last)<br>@endif
-            @endforeach
-          @else
-            -
-          @endif
-        </td>
-
+        <td style="font-size:10px;">{{ $item->jenis_barang ?? '-' }}</td>
         <td style="font-size:10px;">{{ $item->pengirim ?? '' }}</td>
-        <td class="text-center">
-          {{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}
-        </td>
+        <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
         <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
         <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
         <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
@@ -218,11 +182,11 @@
       </tr>
     @endforeach
 
-    <tr class="summary">
+   <tr class="summary">
       <td colspan="2" class="text-right">Total</td>
-      <td class="text-center">{{ $totalKoli }}</td>
-      <td colspan="4"></td>
-      <td class="text-right">Total</td>
+      <td class="text-center">{{ "." }}</td>
+      <td colspan="3"></td>
+      <td colspan="2" class="text-right">Total</td>
       <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
       <td></td>
     </tr>

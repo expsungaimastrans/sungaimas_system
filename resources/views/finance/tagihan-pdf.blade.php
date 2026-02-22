@@ -110,6 +110,7 @@
         <td class="center">{{ $totalKoli }}</td>
         <td class="center">{{ $totalKg }}</td>
         <td>{{ $barangList }}</td>
+        <td class="center">{{ $s->status_pembayaran }}</td>
         <td class="right">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
       </tr>
     @endforeach
