@@ -134,18 +134,30 @@
 <br>
 
 {{-- ===== FOOTER ===== --}}
-<table>
+<table style="width:100%; margin-top:4px; border-collapse:collapse;">
   <tr>
-    <td width="50%" style="line-height:1.6;">
-      Transfer Bank:<br>
+    {{-- Kolom Transfer Bank, dirapatkan line-height --}}
+    <td style="width:50%; vertical-align:top; font-size:10px; line-height:1.2;">
+      <strong>Transfer Bank:</strong><br>
       BRI : 221601000224568<br>
       BNI : 0050385081<br>
       BCA : 8620008665<br>
       A/n Weenarto Trimaryono
     </td>
-    <td width="50%" class="right">
-      Hormat Kami,<br><br><br>
+
+    {{-- Kolom tanda tangan perusahaan --}}
+    <td style="width:25%; vertical-align:top; text-align:center; font-size:10px;">
+      Hormat Kami,<br>
       <strong>Sungai Mas Trans</strong>
+      {{-- kalau mau ada space tanda tangan internal, bisa tambahkan margin-top di sini --}}
+    </td>
+
+    {{-- Kolom tanda tangan penerima --}}
+    <td style="width:25%; vertical-align:top; text-align:center; font-size:10px;">
+      Penerima,<br><br><br>
+      <span style="display:inline-block; margin-top:18px; border-top:1px solid #000; padding-top:2px; min-width:130px;">
+        &nbsp;
+      </span>
     </td>
   </tr>
 </table>
