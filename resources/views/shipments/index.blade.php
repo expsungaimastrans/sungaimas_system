@@ -149,7 +149,7 @@
         <thead>
           <tr class="text-center">
             <th style="width:140px;">No Nota</th>
-            <th>Detail Barang</th>
+            <th style="width:140px;">Detail Barang</th>
             <th>Penerima</th>
             <th style="width:130px;">Tujuan</th>
             <th style="width:140px;">Total</th>
