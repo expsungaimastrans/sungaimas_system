@@ -149,7 +149,7 @@
         <thead>
           <tr class="text-center">
             <th style="width:140px;">No Nota</th>
-            <th>Pengirim</th>
+            <th>Detail Barang</th>
             <th>Penerima</th>
             <th style="width:130px;">Tujuan</th>
             <th style="width:140px;">Total</th>
@@ -162,7 +162,12 @@
         @forelse($shipments as $s)
           <tr>
             <td class="text-center fw-bold">{{ $s->no_nota }}</td>
-            <td>{{ $s->nama_pengirim }}</td>
+
+            {{-- DETAIL BARANG: hanya nama barang --}}
+            <td style="font-size:11px;">
+              {{ $s->items->pluck('nama_barang')->filter()->implode(', ') ?: '-' }}
+            </td>
+
             <td>{{ $s->nama_penerima }}</td>
             <td class="text-center">{{ $s->tujuan }}</td>
             <td class="text-end">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
@@ -212,11 +217,9 @@
               @endif
             </td>
 
-            {{-- AKSI <a href="/shipments/{{ $s->id }}/pdf" class="btn btn-sm btn-outline-secondary">PDF</a> --}}
+            {{-- AKSI --}}
             <td class="text-center">
               <div class="d-flex flex-wrap justify-content-center gap-2">
-                
-              
                 <a href="{{ route('shipments.pdfHalf', $s->id) }}" class="btn btn-sm btn-outline-secondary">
                   PDF Half
                 </a>
