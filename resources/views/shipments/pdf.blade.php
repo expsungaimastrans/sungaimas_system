@@ -37,9 +37,8 @@
           <td width="78%" valign="top" style="line-height:1.5;">
             <strong>Sungai Mas Trans</strong><br>
             Jl. Pesapen Selatan No.2/A<br>
-            Sungai Mas - Indonesia 45311<br>
             Telp. (031) 3550447<br>
-            081330572008 / 082302004004
+            087788406221
           </td>
         </tr>
       </table>
