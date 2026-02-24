@@ -279,21 +279,7 @@ public function exportCsv(Request $request)
         return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
     }
 
-    public function pdf($id)
-{
-    $shipment = Shipment::with(['items'])->findOrFail($id);
-
-    // 9.5 inch x 11 inch dalam satuan points (1 inch = 72 pt)
-    $width  = 9.5 * 72; // 684
-    $height = 11  * 72; // 792
-
-    $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-        ->setPaper([0, 0, $width, $height], 'portrait');
-
-    $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
-
-    return $pdf->stream('nota-' . $fileNo . '.pdf');
-}
+   
 
 public function pdfHalf($id)
 {

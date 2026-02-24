@@ -9,8 +9,16 @@
     </div>
     <div class="d-flex gap-2 mt-2 mt-md-0">
         <a href="/shipments" class="btn btn-outline-secondary">Kembali</a>
-        <a href="/shipments/{{ $shipment->id }}/pdf" target="_blank" class="btn btn-primary">Lihat PDF</a>
-        <a href="/shipments/{{ $shipment->id }}/pdf" download class="btn btn-success">⬇ Download PDF</a>
+
+        {{-- Lihat PDF (pakai half form) --}}
+        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" target="_blank" class="btn btn-primary">
+            Lihat PDF
+        </a>
+
+        {{-- Download PDF (half form) --}}
+        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" download class="btn btn-success">
+            ⬇ Download PDF
+        </a>
     </div>
 </div>
 
@@ -26,7 +34,7 @@
                         WhatsApp Penerima
                     </a>
                     <div class="mt-2">
-                        <a href="/shipments/{{ $shipment->id }}/pdf" download class="btn btn-outline-success w-100">
+                        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" download class="btn btn-outline-success w-100">
                             ⬇ Download PDF untuk dikirim manual
                         </a>
                     </div>
@@ -42,7 +50,7 @@
                         WhatsApp Pengirim
                     </a>
                     <div class="mt-2">
-                        <a href="/shipments/{{ $shipment->id }}/pdf" download class="btn btn-outline-success w-100">
+                        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" download class="btn btn-outline-success w-100">
                             ⬇ Download PDF untuk dikirim manual
                         </a>
                     </div>
