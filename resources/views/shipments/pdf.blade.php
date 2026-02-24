@@ -49,7 +49,7 @@
     </td>
 
     <td width="25%" class="right" valign="top" style="line-height:1.6; text-align:right;">
-      <span style="font-size:18px; font-weight:900; display:block; margin-bottom:4px;">
+      <span style="font-size:26px; font-weight:900; display:block; margin-bottom:4px;">
           {{ $shipment->no_nota }}
       </span>
   
