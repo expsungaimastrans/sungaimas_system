@@ -6,7 +6,7 @@
 <style>
   body {
     font-family: "Times New Roman", serif;
-    font-size: 12px;
+    font-size: 14px;
     margin: 0;
     padding: 0;
   }
@@ -48,10 +48,15 @@
       <strong style="font-size:13px;">NOTA PENGIRIMAN</strong>
     </td>
 
-    <td width="25%" class="right" valign="top" style="line-height:1.6;">
-      <strong>{{ $shipment->no_nota }}</strong><br>
-      {{ \Carbon\Carbon::parse($shipment->tanggal)->format('d F Y') }}
-    </td>
+    <td width="25%" class="right" valign="top" style="line-height:1.6; text-align:right;">
+      <span style="font-size:18px; font-weight:900; display:block; margin-bottom:4px;">
+          {{ $shipment->no_nota }}
+      </span>
+  
+      <span style="font-size:12px;">
+          {{ \Carbon\Carbon::parse($shipment->tanggal)->format('d F Y') }}
+      </span>
+  </td>
   </tr>
 </table>
 
