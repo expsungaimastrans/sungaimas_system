@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'kirimi' => [
+    'user_code' => env('KMBGZR226'),
+    'secret'    => env('915359cc7cd35bf15b9b2a190a924e64f927cbc85c588342c5bfe39c0c441c94'),
+    'device_id' => env('D-WJ0YM'),
+],
+
 ];

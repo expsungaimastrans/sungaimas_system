@@ -9,16 +9,8 @@
     </div>
     <div class="d-flex gap-2 mt-2 mt-md-0">
         <a href="/shipments" class="btn btn-outline-secondary">Kembali</a>
-
-        {{-- Lihat PDF (pakai half form) --}}
-        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" target="_blank" class="btn btn-primary">
-            Lihat PDF
-        </a>
-
-        {{-- Download PDF (half form) --}}
-        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" download class="btn btn-success">
-            ⬇ Download PDF
-        </a>
+        <a href="/shipments/{{ $shipment->id }}/pdf" target="_blank" class="btn btn-primary">Lihat PDF</a>
+        <a href="/shipments/{{ $shipment->id }}/pdf" download class="btn btn-success">⬇ Download PDF</a>
     </div>
 </div>
 
@@ -27,37 +19,63 @@
 
         {{-- ===== WA ACTIONS ===== --}}
         <div class="row g-3 mb-4">
+
+            {{-- PENERIMA --}}
             <div class="col-md-6">
-                <div class="fw-bold mb-2">Kirim WA ke Penerima</div>
-                @if(!empty($waPenerima))
-                    <a class="btn btn-success w-100" target="_blank" href="{{ $waPenerima }}">
-                        WhatsApp Penerima
-                    </a>
-                    <div class="mt-2">
-                        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" download class="btn btn-outline-success w-100">
-                            ⬇ Download PDF untuk dikirim manual
-                        </a>
+                <div class="fw-bold mb-1">Kirim WA ke Penerima</div>
+                <div class="text-muted small mb-2">{{ $shipment->nama_penerima }} — {{ $shipment->telp_penerima ?: '-' }}</div>
+
+                @if(!empty($shipment->telp_penerima))
+                    {{-- Status indikator --}}
+                    <div id="status-penerima" class="mb-2">
+                        @if($shipment->wa_penerima_sent_at)
+                            <span class="badge text-bg-success">
+                                ✓ Terkirim {{ \Carbon\Carbon::parse($shipment->wa_penerima_sent_at)->format('d/m/Y H:i') }}
+                            </span>
+                        @else
+                            <span class="badge text-bg-secondary">Belum dikirim</span>
+                        @endif
                     </div>
+
+                    <button class="btn btn-success w-100"
+                            onclick="kirimWa('penerima', this)"
+                            id="btn-penerima">
+                        <span class="icon">📲</span>
+                        {{ $shipment->wa_penerima_sent_at ? 'Kirim Ulang ke Penerima' : 'Kirim Nota ke Penerima' }}
+                    </button>
                 @else
                     <div class="alert alert-warning mb-0">Nomor WA penerima belum diisi.</div>
                 @endif
             </div>
 
+            {{-- PENGIRIM --}}
             <div class="col-md-6">
-                <div class="fw-bold mb-2">Kirim WA ke Pengirim</div>
-                @if(!empty($waPengirim))
-                    <a class="btn btn-success w-100" target="_blank" href="{{ $waPengirim }}">
-                        WhatsApp Pengirim
-                    </a>
-                    <div class="mt-2">
-                        <a href="{{ route('shipments.pdfHalf', $shipment->id) }}" download class="btn btn-outline-success w-100">
-                            ⬇ Download PDF untuk dikirim manual
-                        </a>
+                <div class="fw-bold mb-1">Kirim WA ke Pengirim</div>
+                <div class="text-muted small mb-2">{{ $shipment->nama_pengirim }} — {{ $shipment->telp_pengirim ?: '-' }}</div>
+
+                @if(!empty($shipment->telp_pengirim))
+                    {{-- Status indikator --}}
+                    <div id="status-pengirim" class="mb-2">
+                        @if($shipment->wa_pengirim_sent_at)
+                            <span class="badge text-bg-success">
+                                ✓ Terkirim {{ \Carbon\Carbon::parse($shipment->wa_pengirim_sent_at)->format('d/m/Y H:i') }}
+                            </span>
+                        @else
+                            <span class="badge text-bg-secondary">Belum dikirim</span>
+                        @endif
                     </div>
+
+                    <button class="btn btn-success w-100"
+                            onclick="kirimWa('pengirim', this)"
+                            id="btn-pengirim">
+                        <span class="icon">📲</span>
+                        {{ $shipment->wa_pengirim_sent_at ? 'Kirim Ulang ke Pengirim' : 'Kirim Nota ke Pengirim' }}
+                    </button>
                 @else
                     <div class="alert alert-warning mb-0">Nomor WA pengirim belum diisi.</div>
                 @endif
             </div>
+
         </div>
 
         <hr class="my-4">
@@ -96,7 +114,7 @@
 
         <hr class="my-4">
 
-        {{-- ===== TABEL BARANG STRUCTURE BARU ===== --}}
+        {{-- ===== TABEL BARANG ===== --}}
         <div class="h5 mb-2">Detail Barang</div>
         <div class="table-responsive">
             <table class="table table-bordered align-middle">
@@ -113,9 +131,7 @@
                 </thead>
                 <tbody>
                 @foreach($shipment->items as $it)
-                    @php
-                        $tarif = $it->satuan_tarif ?? 'unit';
-                    @endphp
+                    @php $tarif = $it->satuan_tarif ?? 'unit'; @endphp
                     <tr>
                         <td class="fw-semibold">{{ $it->nama_barang }}</td>
                         <td class="text-center">{{ (int)($it->koli ?? 0) }}</td>
@@ -141,4 +157,73 @@
 
     </div>
 </div>
+
+<script>
+const SHIPMENT_ID = {{ $shipment->id }};
+const CSRF        = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+async function kirimWa(target, btn) {
+    const label = target === 'penerima' ? 'Penerima' : 'Pengirim';
+
+    if (!confirm(`Kirim nota PDF ke WhatsApp ${label}?`)) return;
+
+    // Loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mengirim...';
+
+    try {
+        const res  = await fetch(`/shipments/${SHIPMENT_ID}/send-wa`, {
+            method:  'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'X-CSRF-TOKEN':  CSRF,
+                'Accept':        'application/json',
+            },
+            body: JSON.stringify({ target }),
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+            // Update badge status
+            const statusEl = document.getElementById(`status-${target}`);
+            statusEl.innerHTML = `<span class="badge text-bg-success">✓ Terkirim ${data.sent_at}</span>`;
+
+            // Update tombol
+            btn.disabled  = false;
+            btn.innerHTML = `<span class="icon">📲</span> Kirim Ulang ke ${label}`;
+
+            showToast(`✅ Nota berhasil dikirim ke WhatsApp ${label}!`, 'success');
+        } else {
+            btn.disabled  = false;
+            btn.innerHTML = `<span class="icon">📲</span> Kirim Nota ke ${label}`;
+            showToast(`❌ Gagal: ${data.message}`, 'danger');
+        }
+
+    } catch (e) {
+        btn.disabled  = false;
+        btn.innerHTML = `<span class="icon">📲</span> Kirim Nota ke ${label}`;
+        showToast('❌ Terjadi kesalahan koneksi.', 'danger');
+    }
+}
+
+function showToast(msg, type = 'success') {
+    // Buat toast container jika belum ada
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} shadow`;
+    toast.style.cssText = 'margin-bottom:8px;';
+    toast.textContent = msg;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.remove(), 4000);
+}
+</script>
 @endsection

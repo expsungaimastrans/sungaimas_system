@@ -1,9 +1,10 @@
 <?php
+// FILE: database/migrations/2026_02_20_000002_add_columns_to_invoice_items_table.php
+// Ganti SELURUH ISI file ini dengan versi di bawah
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -22,21 +23,11 @@ return new class extends Migration
             if (!Schema::hasColumn('invoice_items', 'nilai')) {
                 $table->decimal('nilai', 15, 2)->default(0)->after('tujuan');
             }
+            // Hapus kolom amount jika masih ada
+            if (Schema::hasColumn('invoice_items', 'amount')) {
+                $table->dropColumn('amount');
+            }
         });
-
-        // Migrasi data lama: salin amount -> nilai
-        DB::statement("UPDATE invoice_items SET nilai = amount WHERE nilai = 0 OR nilai IS NULL");
-
-        // Isi no_nota, penerima, tujuan dari tabel shipments
-        DB::statement("
-            UPDATE invoice_items ii
-            JOIN shipments s ON s.id = ii.shipment_id
-            SET
-                ii.no_nota   = s.no_nota,
-                ii.penerima  = s.nama_penerima,
-                ii.tujuan    = s.tujuan
-            WHERE ii.no_nota IS NULL OR ii.no_nota = ''
-        ");
     }
 
     public function down(): void
