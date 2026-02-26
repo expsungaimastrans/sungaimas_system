@@ -93,13 +93,15 @@ class WhatsappController extends Controller
         $tanggal = \Carbon\Carbon::parse($shipment->tanggal)->format('d/m/Y');
 
         $message = "Halo *{$nama}*,\n\n"
-                 . "Berikut nota pengiriman dari *Sungai Mas Trans*:\n\n"
+                 . "Barang anda sudah kami terima Berikut nota pengiriman dari *Sungai Mas Trans*:\n\n"
                  . "📄 *No Nota* : {$noNota}\n"
                  . "📅 *Tanggal* : {$tanggal}\n"
                  . "📦 *Tujuan*  : {$tujuan}\n"
                  . "💰 *Total*   : {$total}\n\n"
+                 . "Silakan download PDF dari tombol Download di halaman nota.\n"
+                 . "Harap konfirmasi apabila melakukan pembayaran dengan mengirimkan bukti transfer ke WhatsApp kami.\n\n"
                  . "Terima kasih telah menggunakan jasa kami.\n"
-                 . "Info: (031) 3550447 / 081330572008";
+                 . "Info: (031) 3550447 / 085353744425";
 
         // ── 5. Kirim via Kirimi /v1/send-message + media_url ─────────────────
         try {

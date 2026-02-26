@@ -513,7 +513,7 @@ class ShipmentController extends Controller
         $phone = $this->normalizePhone($phone);
         if (!$phone) return null;
 
-        $msg = "Halo, barang anda sudah kami terima berikut detail nota Expedisi Sungai Mas:\n"
+        $msg = "Halo, berikut detail nota Expedisi Sungai Mas:\n"
              . "No Nota: {$shipment->no_nota}\n"
              . "Pengirim: {$shipment->nama_pengirim}\n"
              . "Penerima: {$shipment->nama_penerima}\n"
