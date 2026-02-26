@@ -23,12 +23,18 @@
             {{-- PENERIMA --}}
             <div class="col-md-6">
                 <div class="fw-bold mb-1">Kirim WA ke Penerima</div>
-                <div class="text-muted small mb-2">{{ $shipment->nama_penerima }} — {{ $shipment->telp_penerima ?: '-' }}</div>
+                <div class="text-muted small mb-2">
+                    {{ $shipment->nama_penerima }} — {{ $shipment->telp_penerima ?: '-' }}
+                </div>
 
                 @if(!empty($shipment->telp_penerima))
                     {{-- Status indikator --}}
                     <div id="status-penerima" class="mb-2">
-                        @if($shipment->wa_penerima_sent_at)
+                        @if(!$canWaPenerima)
+                            <span class="badge text-bg-danger">
+                                Nomor WA tidak valid
+                            </span>
+                        @elseif($shipment->wa_penerima_sent_at)
                             <span class="badge text-bg-success">
                                 ✓ Terkirim {{ \Carbon\Carbon::parse($shipment->wa_penerima_sent_at)->format('d/m/Y H:i') }}
                             </span>
@@ -38,11 +44,25 @@
                     </div>
 
                     <button class="btn btn-success w-100"
-                            onclick="kirimWa('penerima', this)"
-                            id="btn-penerima">
+                            @if($canWaPenerima)
+                                onclick="kirimWa('penerima', this)"
+                                id="btn-penerima"
+                            @else
+                                disabled
+                            @endif>
                         <span class="icon">📲</span>
-                        {{ $shipment->wa_penerima_sent_at ? 'Kirim Ulang ke Penerima' : 'Kirim Nota ke Penerima' }}
+                        @if(!$canWaPenerima)
+                            Nomor WA tidak valid
+                        @else
+                            {{ $shipment->wa_penerima_sent_at ? 'Kirim Ulang ke Penerima' : 'Kirim Nota ke Penerima' }}
+                        @endif
                     </button>
+
+                    @unless($canWaPenerima)
+                        <div class="alert alert-warning mt-2 mb-0 py-2">
+                            Nomor WA penerima kosong / tidak valid. Perbaiki di menu edit nota jika ingin kirim WA.
+                        </div>
+                    @endunless
                 @else
                     <div class="alert alert-warning mb-0">Nomor WA penerima belum diisi.</div>
                 @endif
@@ -51,12 +71,18 @@
             {{-- PENGIRIM --}}
             <div class="col-md-6">
                 <div class="fw-bold mb-1">Kirim WA ke Pengirim</div>
-                <div class="text-muted small mb-2">{{ $shipment->nama_pengirim }} — {{ $shipment->telp_pengirim ?: '-' }}</div>
+                <div class="text-muted small mb-2">
+                    {{ $shipment->nama_pengirim }} — {{ $shipment->telp_pengirim ?: '-' }}
+                </div>
 
                 @if(!empty($shipment->telp_pengirim))
                     {{-- Status indikator --}}
                     <div id="status-pengirim" class="mb-2">
-                        @if($shipment->wa_pengirim_sent_at)
+                        @if(!$canWaPengirim)
+                            <span class="badge text-bg-danger">
+                                Nomor WA tidak valid
+                            </span>
+                        @elseif($shipment->wa_pengirim_sent_at)
                             <span class="badge text-bg-success">
                                 ✓ Terkirim {{ \Carbon\Carbon::parse($shipment->wa_pengirim_sent_at)->format('d/m/Y H:i') }}
                             </span>
@@ -66,11 +92,25 @@
                     </div>
 
                     <button class="btn btn-success w-100"
-                            onclick="kirimWa('pengirim', this)"
-                            id="btn-pengirim">
+                            @if($canWaPengirim)
+                                onclick="kirimWa('pengirim', this)"
+                                id="btn-pengirim"
+                            @else
+                                disabled
+                            @endif>
                         <span class="icon">📲</span>
-                        {{ $shipment->wa_pengirim_sent_at ? 'Kirim Ulang ke Pengirim' : 'Kirim Nota ke Pengirim' }}
+                        @if(!$canWaPengirim)
+                            Nomor WA tidak valid
+                        @else
+                            {{ $shipment->wa_pengirim_sent_at ? 'Kirim Ulang ke Pengirim' : 'Kirim Nota ke Pengirim' }}
+                        @endif
                     </button>
+
+                    @unless($canWaPengirim)
+                        <div class="alert alert-warning mt-2 mb-0 py-2">
+                            Nomor WA pengirim kosong / tidak valid. Perbaiki di menu edit nota jika ingin kirim WA.
+                        </div>
+                    @endunless
                 @else
                     <div class="alert alert-warning mb-0">Nomor WA pengirim belum diisi.</div>
                 @endif
@@ -92,7 +132,9 @@
             </div>
             <div class="col-md-4">
                 <div class="text-muted small">Total</div>
-                <div class="fw-bold">Rp {{ number_format((float)$shipment->harga_total,0,',','.') }}</div>
+                <div class="fw-bold">
+                    Rp {{ number_format((float)$shipment->harga_total,0,',','.') }}
+                </div>
             </div>
 
             <div class="col-md-6">
@@ -167,7 +209,6 @@ async function kirimWa(target, btn) {
 
     if (!confirm(`Kirim nota PDF ke WhatsApp ${label}?`)) return;
 
-    // Loading state
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mengirim...';
 
@@ -177,7 +218,7 @@ async function kirimWa(target, btn) {
             headers: {
                 'Content-Type':  'application/json',
                 'X-CSRF-TOKEN':  CSRF,
-                'Accept':        'application/json',
+                'Accept':        'application/json'
             },
             body: JSON.stringify({ target }),
         });
@@ -185,11 +226,9 @@ async function kirimWa(target, btn) {
         const data = await res.json();
 
         if (data.ok) {
-            // Update badge status
             const statusEl = document.getElementById(`status-${target}`);
             statusEl.innerHTML = `<span class="badge text-bg-success">✓ Terkirim ${data.sent_at}</span>`;
 
-            // Update tombol
             btn.disabled  = false;
             btn.innerHTML = `<span class="icon">📲</span> Kirim Ulang ke ${label}`;
 
@@ -208,12 +247,12 @@ async function kirimWa(target, btn) {
 }
 
 function showToast(msg, type = 'success') {
-    // Buat toast container jika belum ada
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;';
+        container.style.cssText =
+            'position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;';
         document.body.appendChild(container);
     }
 
