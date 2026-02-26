@@ -90,24 +90,38 @@ class WhatsappController extends Controller
         // ── 5. Kirim via Kirimi.id ───────────────────────────────────────────
         try {
             /** @var \Illuminate\Http\Client\Response $response */
-            $response = Http::timeout(30)->post('https://api.kirimi.id/v1/send-document', [
-                'user_code' => config('KMBGZR226'),
-                'secret'    => config('915359cc7cd35bf15b9b2a190a924e64f927cbc85c588342c5bfe39c0c441c94'),
-                'device_id' => config('D-WJ0YM'),
-                'receiver'  => $receiver,
-                'message'   => $message,
-                'media'     => $pdfUrl,
-            ]);
+            $response = Http::timeout(30)
+                ->asJson()  // kirim sebagai JSON bukan form
+                ->post('https://api.kirimi.id/v1/send-document', [
+                    'user_code' => config('services.kirimi.user_code'),
+                    'secret'    => config('services.kirimi.secret'),
+                    'device_id' => config('services.kirimi.device_id'),
+                    'receiver'  => $receiver,
+                    'message'   => $message,
+                    'media'     => $pdfUrl,
+                ]);
 
             $statusCode = $response->status();
+            $rawBody    = $response->body();
             $body       = (array) $response->json();
             $bodyStatus = (string) ($body['status'] ?? '');
 
+            // Log full response untuk debug
+            \Illuminate\Support\Facades\Log::info('Kirimi response', [
+                'status_code' => $statusCode,
+                'body'        => $rawBody,
+            ]);
+
             if ($statusCode >= 400 || $bodyStatus === 'error') {
-                $errMsg = (string) ($body['message'] ?? $response->body());
+                // Tampilkan full body agar mudah debug
+                $errMsg = (string) ($body['message'] ?? $rawBody);
                 return response()->json([
                     'ok'      => false,
                     'message' => 'Kirimi API error: ' . $errMsg,
+                    'debug'   => [
+                        'http_status' => $statusCode,
+                        'raw'         => $rawBody,
+                    ],
                 ], 502);
             }
         } catch (\Throwable $e) {
