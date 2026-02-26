@@ -203,7 +203,7 @@ async function kirimWa(target, btn) {
     } catch (e) {
         btn.disabled  = false;
         btn.innerHTML = `<span class="icon">📲</span> Kirim Nota ke ${label}`;
-        showToast('❌ Terjadi kesalahan koneksi.', 'danger');
+        showToast('❌ Terjadi kesalahan koneksii.', 'danger');
     }
 }
 
