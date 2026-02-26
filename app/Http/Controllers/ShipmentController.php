@@ -275,6 +275,8 @@ public function exportCsv(Request $request)
 
         $waPengirim = $this->waLink($shipment->telp_pengirim, $shipment);
         $waPenerima = $this->waLink($shipment->telp_penerima, $shipment);
+        $canWaPenerima = (bool) $this->normalizePhone($shipment->telp_penerima);
+        $canWaPengirim = (bool) $this->normalizePhone($shipment->telp_pengirim);
 
         return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
     }
