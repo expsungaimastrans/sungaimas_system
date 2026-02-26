@@ -36,9 +36,9 @@ return [
     ],
 
      'kirimi' => [
-    'user_code' => env('KMBGZR226'),
-    'secret'    => env('915359cc7cd35bf15b9b2a190a924e64f927cbc85c588342c5bfe39c0c441c94'),
-    'device_id' => env('D-WJ0YM'),
+    'user_code' => env('KIRIMI_USER_CODE'),
+    'secret'    => env('KIRIMI_SECRET'),
+    'device_id' => env('KIRIMI_DEVICE_ID'),
 
 
    // 'fonnte' => [
