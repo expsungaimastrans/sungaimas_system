@@ -160,7 +160,7 @@
 
 <script>
 const SHIPMENT_ID = {{ $shipment->id }};
-const CSRF        = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+const CSRF        = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '{{ csrf_token() }}';
 
 async function kirimWa(target, btn) {
     const label = target === 'penerima' ? 'Penerima' : 'Pengirim';
@@ -203,7 +203,7 @@ async function kirimWa(target, btn) {
     } catch (e) {
         btn.disabled  = false;
         btn.innerHTML = `<span class="icon">📲</span> Kirim Nota ke ${label}`;
-        showToast('❌ Terjadi kesalahan koneksii.', 'danger');
+        showToast('❌ Terjadi kesalahan koneksi.', 'danger');
     }
 }
 
