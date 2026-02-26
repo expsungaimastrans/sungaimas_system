@@ -5,26 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Shipment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class WhatsappController extends Controller
 {
-    /**
-     * Kirim nota PDF via Kirimi.id ke penerima atau pengirim.
-     * POST /shipments/{shipment}/send-wa
-     * body: { target: 'penerima' | 'pengirim' }
-     */
     public function send(Request $request, Shipment $shipment)
     {
         $request->validate([
             'target' => 'required|in:penerima,pengirim',
         ]);
 
-        $target = $request->input('target'); // 'penerima' atau 'pengirim'
+        $target = $request->input('target');
 
-        // ── 1. Tentukan nomor tujuan ─────────────────────────────────────────
+        // ── 1. Tentukan nomor & nama ──────────────────────────────────────────
         if ($target === 'penerima') {
             $noHp = $shipment->telp_penerima;
             $nama = $shipment->nama_penerima;
@@ -40,26 +35,36 @@ class WhatsappController extends Controller
             ], 422);
         }
 
-        // ── 2. Normalisasi nomor (08xx → 628xx) ─────────────────────────────
         $receiver = $this->normalizePhone($noHp);
 
-        // ── 3. Generate PDF nota → simpan sementara ke R2 ───────────────────
+        // ── 2. Validasi credentials ───────────────────────────────────────────
+        $userCode = (string) config('services.kirimi.user_code');
+        $secret   = (string) config('services.kirimi.secret');
+        $deviceId = (string) config('services.kirimi.device_id');
+
+        if (empty($userCode) || empty($secret) || empty($deviceId)) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Kirimi credentials belum lengkap di environment variables.',
+            ], 500);
+        }
+
+        // ── 3. Generate PDF → upload ke storage ───────────────────────────────
         try {
-            $pdf     = Pdf::loadView('shipments.pdf', compact('shipment'))
-                          ->setPaper([0, 0, 684, 396], 'portrait')
-                          ->setOption('margin-top', 6)
-                          ->setOption('margin-right', 6)
-                          ->setOption('margin-bottom', 6)
-                          ->setOption('margin-left', 6);
+            $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
+                ->setPaper([0, 0, 684, 396], 'portrait')
+                ->setOption('margin-top', 6)
+                ->setOption('margin-right', 6)
+                ->setOption('margin-bottom', 6)
+                ->setOption('margin-left', 6);
 
             $pdfContent = $pdf->output();
+            $safeNota   = str_replace(['/', '\\'], '-', $shipment->no_nota);
+            $filename   = 'nota-wa/' . $safeNota . '-' . Str::random(6) . '.pdf';
+            $disk       = config('filesystems.default') === 's3' ? 's3' : 'public';
 
-            // Simpan ke R2 dengan nama unik
-            $filename  = 'nota-wa/' . $shipment->no_nota . '-' . Str::random(8) . '.pdf';
-            $disk      = config('filesystems.default') === 's3' ? 's3' : 'public';
             Storage::disk($disk)->put($filename, $pdfContent, 'public');
 
-            // Ambil URL publik
             if ($disk === 's3') {
                 $pdfUrl = rtrim(config('filesystems.disks.s3.url'), '/') . '/' . $filename;
             } else {
@@ -72,10 +77,10 @@ class WhatsappController extends Controller
             ], 500);
         }
 
-        // ── 4. Susun pesan ───────────────────────────────────────────────────
+        // ── 4. Susun pesan ────────────────────────────────────────────────────
         $noNota  = $shipment->no_nota;
         $tujuan  = $shipment->tujuan;
-        $total   = 'Rp ' . number_format((float)$shipment->harga_total, 0, ',', '.');
+        $total   = 'Rp ' . number_format((float) $shipment->harga_total, 0, ',', '.');
         $tanggal = \Carbon\Carbon::parse($shipment->tanggal)->format('d/m/Y');
 
         $message = "Halo *{$nama}*,\n\n"
@@ -87,43 +92,53 @@ class WhatsappController extends Controller
                  . "Terima kasih telah menggunakan jasa kami.\n"
                  . "Info: (031) 3550447 / 081330572008";
 
-        // ── 5. Kirim via Kirimi.id ───────────────────────────────────────────
+        // ── 5. Kirim via Kirimi /v1/send-message + media_url ─────────────────
         try {
-            /** @var \Illuminate\Http\Client\Response $response */
-            $response = Http::timeout(30)
-                ->asJson()  // kirim sebagai JSON bukan form
-                ->post('https://api.kirimi.id//v1/send-text', [
-                    'user_code' => config('KMBGZR226'),
-                    'secret'    => config('915359cc7cd35bf15b9b2a190a924e64f927cbc85c588342c5bfe39c0c441c94'),
-                    'device_id' => config('D-WJ0YM'),
-                    'receiver'  => $receiver,
-                    'message'   => $message,
-                    'media'     => $pdfUrl,
-                ]);
+            $payload = [
+                'user_code'          => $userCode,
+                'secret'             => $secret,
+                'device_id'          => $deviceId,
+                'receiver'           => $receiver,
+                'message'            => $message,
+                'media_url'          => $pdfUrl,
+                'enableTypingEffect' => false,
+            ];
 
-            $statusCode = $response->status();
-            $rawBody    = $response->body();
-            $body       = (array) $response->json();
-            $bodyStatus = (string) ($body['status'] ?? '');
-
-            // Log full response untuk debug
-            \Illuminate\Support\Facades\Log::info('Kirimi response', [
-                'status_code' => $statusCode,
-                'body'        => $rawBody,
+            $context = stream_context_create([
+                'http' => [
+                    'header'  => "Content-Type: application/json\r\n",
+                    'method'  => 'POST',
+                    'content' => json_encode($payload),
+                    'timeout' => 30,
+                ],
             ]);
 
-            if ($statusCode >= 400 || $bodyStatus === 'error') {
-                // Tampilkan full body agar mudah debug
-                $errMsg = (string) ($body['message'] ?? $rawBody);
+            $rawResponse = file_get_contents('https://api.kirimi.id/v1/send-message', false, $context);
+
+            Log::info('Kirimi response', [
+                'receiver' => $receiver,
+                'raw'      => $rawResponse,
+            ]);
+
+            if ($rawResponse === false) {
                 return response()->json([
                     'ok'      => false,
-                    'message' => 'Kirimi API error: ' . $errMsg,
-                    'debug'   => [
-                        'http_status' => $statusCode,
-                        'raw'         => $rawBody,
-                    ],
+                    'message' => 'Gagal menghubungi Kirimi API.',
                 ], 502);
             }
+
+            $body    = (array) json_decode($rawResponse, true);
+            $success = (bool) ($body['success'] ?? false);
+
+            if (!$success) {
+                $errMsg = (string) ($body['message'] ?? $rawResponse);
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Kirimi error: ' . $errMsg,
+                    'debug'   => $rawResponse,
+                ], 502);
+            }
+
         } catch (\Throwable $e) {
             return response()->json([
                 'ok'      => false,
@@ -131,8 +146,8 @@ class WhatsappController extends Controller
             ], 502);
         }
 
-        // ── 6. Catat waktu kirim di DB ───────────────────────────────────────
-        $col = $target === 'penerima' ? 'wa_penerima_sent_at' : 'wa_pengirim_sent_at';
+        // ── 6. Catat waktu kirim ──────────────────────────────────────────────
+        $col            = $target === 'penerima' ? 'wa_penerima_sent_at' : 'wa_pengirim_sent_at';
         $shipment->$col = now();
         $shipment->save();
 
@@ -143,14 +158,14 @@ class WhatsappController extends Controller
         ]);
     }
 
-    // ── Helper: normalisasi nomor HP ─────────────────────────────────────────
     private function normalizePhone(string $phone): string
     {
-        $phone = preg_replace('/\D/', '', $phone); // hapus non-digit
+        $phone = preg_replace('/\D/', '', $phone);
         if (str_starts_with($phone, '08')) {
-            $phone = '62' . substr($phone, 1);
-        } elseif (str_starts_with($phone, '8')) {
-            $phone = '62' . $phone;
+            return '62' . substr($phone, 1);
+        }
+        if (str_starts_with($phone, '8')) {
+            return '62' . $phone;
         }
         return $phone;
     }
