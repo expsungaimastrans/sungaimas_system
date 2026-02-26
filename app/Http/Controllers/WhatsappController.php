@@ -38,9 +38,9 @@ class WhatsappController extends Controller
         $receiver = $this->normalizePhone($noHp);
 
         // ── 2. Validasi credentials ───────────────────────────────────────────
-        $userCode = (string) config('KIRIMI_USER_CODE');
-        $secret   = (string) config('KIRIMI_SECRET');
-        $deviceId = (string) config('KIRIMI_DEVICE_ID');
+        $userCode = env('KIRIMI_USER_CODE');
+        $secret   = env('KIRIMI_SECRET');
+        $deviceId = env('KIRIMI_DEVICE_ID');
 
         Log::info('Kirimi credentials check', [
             'user_code_len' => strlen($userCode),
