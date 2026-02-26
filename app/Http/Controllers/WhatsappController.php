@@ -42,10 +42,19 @@ class WhatsappController extends Controller
         $secret   = (string) config('services.kirimi.secret');
         $deviceId = (string) config('services.kirimi.device_id');
 
+        Log::info('Kirimi credentials check', [
+            'user_code_len' => strlen($userCode),
+            'secret_len'    => strlen($secret),
+            'device_id_len' => strlen($deviceId),
+        ]);
+
         if (empty($userCode) || empty($secret) || empty($deviceId)) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'Kirimi credentials belum lengkap di environment variables.',
+                'message' => 'Kirimi credentials belum lengkap. '
+                           . 'user_code=' . (empty($userCode) ? 'KOSONG' : 'ada') . ' '
+                           . 'secret=' . (empty($secret) ? 'KOSONG' : 'ada') . ' '
+                           . 'device_id=' . (empty($deviceId) ? 'KOSONG' : 'ada'),
             ], 500);
         }
 
