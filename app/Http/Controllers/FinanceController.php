@@ -48,37 +48,10 @@ class FinanceController extends Controller
 
         $shipments = Shipment::with('items')
             ->whereIn('id', $ids)
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        // Sort berdasarkan urutan jalur kota, lalu nama penerima A-Z
-        $jalurOrder = [
-            'labuan bajo' => 1, 'labuanbajo' => 1,
-            'lembor'      => 2,
-            'ruteng'      => 3,
-            'borong'      => 4,
-            'aimere'      => 5, 'aimire' => 5,
-            'cancar'      => 6,
-            'bajawa'      => 7,
-            'soa'         => 8,
-            'bowae'       => 9,
-            'mbay'        => 10, 'nagekeo' => 10,
-            'ende'        => 11,
-        ];
-
-        $shipments = $shipments->sortBy(function ($s) use ($jalurOrder) {
-            $tujuan = strtolower(trim($s->tujuan ?? ''));
-            $order  = 99;
-            foreach ($jalurOrder as $key => $val) {
-                if (str_contains($tujuan, $key)) {
-                    $order = $val;
-                    break;
-                }
-            }
-            // Sort primer: urutan kota, sekunder: nama penerima A-Z
-            return sprintf('%02d_%s', $order, strtolower($s->nama_penerima ?? ''));
-        })->values();
-
-        $total  = $shipments->count();
+        $total = $shipments->count();
         $unpaid = $shipments->where('status_pembayaran', '!=', 'LUNAS')->count();
 
         return view('finance.manifest', compact('manifest', 'shipments', 'total', 'unpaid'));
@@ -214,8 +187,8 @@ public function storeInvoice(Request $request)
     return DB::transaction(function () use ($billedTo, $ids) {
 
         $shipments = Shipment::query()
-            ->whereIn('id', $ids)
-            ->whereNotNull('manifest_id')
+            ->whereIn('shipments.id', $ids)           // fix: specify tabel agar tidak ambiguous
+            ->whereNotNull('shipments.manifest_id')   // fix: specify tabel
             ->leftJoin('invoice_items as ii','ii.shipment_id','=','shipments.id')
             ->whereNull('ii.shipment_id')
             ->select('shipments.*')
@@ -354,6 +327,5 @@ public function storeInvoice(Request $request)
         'data' => $shipments,
     ]);
 }
-
 
 }
