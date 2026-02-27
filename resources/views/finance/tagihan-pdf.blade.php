@@ -1,146 +1,156 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="id">
 <head>
 <meta charset="utf-8">
 <title>Tagihan {{ $invoice->invoice_no }}</title>
 <style>
-  body { font-family:"Times New Roman", serif; font-size: 11px; }
-  table { width:100%; border-collapse: collapse; }
-  .line td { border-bottom:1px solid #000; }
-  .box td, .box th { border:1px solid #000; padding:4px; }
-  .center { text-align:center; }
-  .right { text-align:right; }
-  .bold { font-weight:bold; }
-  .small { font-size:10px; }
+  * { font-family: "Times New Roman", serif; font-size: 11px; margin: 0; padding: 0; box-sizing: border-box; }
+  body { padding: 20px; }
+  table { width: 100%; border-collapse: collapse; }
+
+  .company-name { font-size: 13px; font-weight: bold; }
+  .doc-title    { font-size: 15px; font-weight: bold; text-align: center; letter-spacing: 1px; }
+
+  .info-table td { padding: 2px 4px; vertical-align: top; }
+  .info-table .lbl { font-weight: bold; white-space: nowrap; width: 110px; }
+
+  /* Tabel data mirip screenshot — bold headers, border minimal */
+  .data-table th {
+    border: 1px solid #333;
+    padding: 5px 4px;
+    text-align: center;
+    font-weight: bold;
+    background: #fff;
+    line-height: 1.3;
+  }
+  .data-table td {
+    border: 1px solid #555;
+    padding: 5px 5px;
+    vertical-align: middle;
+  }
+  .data-table .total-row td {
+    border-top: 2px solid #333;
+    border-bottom: 2px solid #333;
+    font-weight: bold;
+    padding: 5px;
+  }
+
+  .text-center { text-align: center; }
+  .text-right  { text-align: right; }
+  .text-bold   { font-weight: bold; }
 </style>
 </head>
 <body>
 
-{{-- HEADER --}}
-<table>
+{{-- ===== HEADER ===== --}}
+<table style="margin-bottom:10px;">
   <tr>
-    <td width="45%">
+    <td style="width:45%; vertical-align:middle;">
       <table>
         <tr>
-          <td width="30%" valign="top">
-            <img src="{{ public_path('logo.png') }}" width="80">
+          <td style="width:58px; vertical-align:middle; padding-right:8px;">
+            @php $logoPath = public_path('logo.png'); @endphp
+            @if(file_exists($logoPath))
+              <img src="{{ $logoPath }}" width="55" alt="Logo">
+            @endif
           </td>
-          <td width="70%" valign="top">
-            <strong>Sungai Mas Trans</strong><br>
+          <td style="vertical-align:middle; line-height:1.6;">
+            <span class="company-name">Sungai Mas Trans</span><br>
             Jl. Pesapen Selatan No.2/A<br>
             Sungai Mas - Indonesia 45311<br>
-            Telp. (031) 3550447<br>
-            081330572008 / 082302004004
+            Telp. (031) 3550447 / 081330572008
           </td>
         </tr>
       </table>
     </td>
-
-    <td width="35%" class="center">
-      <div style="font-size:16px; font-weight:bold;">TAGIHAN</div>
-      <div class="small">Rekap beberapa nota pengiriman</div>
-    </td>
-
-    <td width="20%" class="right">
-      <strong>{{ $invoice->invoice_no }}</strong><br>
-      Tanggal: {{ $invoice->created_at?->format('d F Y') ?? now()->format('d F Y') }}
+    <td style="width:55%; vertical-align:top; text-align:right; line-height:1.8;">
+      <div class="doc-title">TAGIHAN / INVOICE</div>
+      <div style="margin-top:5px; font-size:11px;">
+        <strong>No. Tagihan :</strong> {{ $invoice->invoice_no }}<br>
+        <strong>Tanggal &nbsp;&nbsp;&nbsp;&nbsp;:</strong> {{ \Carbon\Carbon::parse($invoice->created_at)->format('d F Y') }}<br>
+        <strong>Ditagihkan :</strong> {{ $invoice->billed_to }}
+      </div>
     </td>
   </tr>
 </table>
 
-<hr>
+<hr style="border:0; border-top:1px solid #333; margin-bottom:10px;">
 
-<table class="line">
-  <tr>
-    <td width="70%">
-      <strong>Ditagihkan Kepada:</strong> {{ $invoice->billed_to }}<br>
-      <strong>Perihal:</strong> Tagihan Pengiriman (Rekap Nota)<br>
-      <strong>Jumlah Nota:</strong> {{ $shipments->count() }} Nota
-    </td>
-    <td width="30%" class="right">
-      <strong>TOTAL TAGIHAN</strong><br>
-      <span style="font-size:14px; font-weight:bold;">
-        Rp {{ number_format($grandTotal,0,',','.') }}
-      </span>
-    </td>
-  </tr>
-</table>
-
-<br>
-
-{{-- TABEL REKAP (dengan kolom tambahan) --}}
-<table class="box">
+{{-- ===== TABEL NOTA ===== --}}
+<table class="data-table">
   <thead>
-    <tr class="center bold">
-      <th width="4%">No</th>
-      <th width="10%">No Nota</th>
-      <th width="12%">Penerima</th>
-      <th width="12%">Pengirim</th>
-      <th width="10%">Tujuan</th>
-      <th width="10%">No Manifest</th>
-      <th width="6%">Koli</th>
-      <th width="6%">Kg</th>
-      <th width="15%">Detail Barang</th>
-      <th width="8%">Total</th>
+    <tr>
+      <th style="width:8%;">Tanggal<br>Terima</th>
+      <th style="width:9%;">Kode</th>
+      <th style="width:5%;">(∅)</th>
+      <th style="width:20%;">Jenis<br>Barang</th>
+      <th style="width:14%;">Pengirim</th>
+      <th style="width:18%;">Penerima</th>
+      <th style="width:8%;">Tujuan</th>
+      <th style="width:10%;">Harga</th>
+      <th style="width:8%;">NO<br>MANIFEST</th>
     </tr>
   </thead>
   <tbody>
-    @foreach($shipments as $i => $s)
+    @foreach($shipments as $s)
+      @if($s)
       @php
-        // total koli & kg dari item
-        $totalKoli = $s->items->sum(function($it){
-          return (float)($it->koli ?? $it->jumlah ?? 0);
-        });
-        $totalKg   = (float)$s->items->sum('berat_kg');
+        // Ambil semua jenis barang dari items
+        $jenisBarang = $s->items
+            ? $s->items->pluck('nama_barang')->filter()->map(fn($b) => strtoupper($b))->implode(', ')
+            : '-';
 
-        // daftar nama barang digabung
-        $barangList = $s->items->pluck('nama_barang')
-                        ->filter()
-                        ->implode(', ');
+        // Total koli dari items
+        $totalKoli = $s->items
+            ? $s->items->sum(fn($i) => (int)($i->koli ?? 0))
+            : 0;
 
-        $manifestNo = optional($s->manifest)->no_manifest ?? $s->manifest_id;
+        // No manifest
+        $noManifest = '-';
+        if ($s->manifest_id) {
+            $manifest = $s->manifest ?? \App\Models\Manifest::find($s->manifest_id);
+            $noManifest = $manifest ? ($manifest->manifest_ke ?? $manifest->no_manifest ?? '-') : '-';
+        }
       @endphp
       <tr>
-        <td class="center">{{ $i+1 }}</td>
-        <td class="center">{{ $s->no_nota }}</td>
-        <td>{{ $s->nama_penerima }}</td>
-        <td>{{ $s->nama_pengirim }}</td>
-        <td class="center">{{ $s->tujuan }}</td>
-        <td class="center">{{ $manifestNo }}</td>
-        <td class="center">{{ $totalKoli }}</td>
-        <td class="center">{{ $totalKg }}</td>
-        <td>{{ $barangList }}</td>
-        <td class="center">{{ $s->status_pembayaran }}</td>
-        <td class="right">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
+        <td class="text-center">
+          {{ $s->tanggal ? \Carbon\Carbon::parse($s->tanggal)->format('d/m/y') : '-' }}
+        </td>
+        <td class="text-center text-bold">{{ $s->no_nota ?? '-' }}</td>
+        <td class="text-center">{{ $totalKoli ?: '-' }}</td>
+        <td>{{ $jenisBarang ?: '-' }}</td>
+        <td>{{ strtoupper($s->nama_pengirim ?? '') }}</td>
+        <td class="text-bold">{{ strtoupper($s->nama_penerima ?? '-') }}</td>
+        <td class="text-center">{{ strtoupper($s->tujuan ?? '-') }}</td>
+        <td class="text-right">{{ number_format((float)($s->harga_total ?? 0), 0, ',', '.') }}</td>
+        <td class="text-center text-bold">{{ $noManifest }}</td>
       </tr>
+      @endif
     @endforeach
-    <tr>
-      <td colspan="10" class="right bold">GRAND TOTAL</td>
-      <td class="right bold">Rp {{ number_format($grandTotal,0,',','.') }}</td>
+
+    {{-- TOTAL ROW --}}
+    <tr class="total-row">
+      <td colspan="6"></td>
+      <td class="text-right text-bold">TOTAL</td>
+      <td class="text-right text-bold">{{ number_format($grandTotal, 0, ',', '.') }}</td>
+      <td></td>
     </tr>
   </tbody>
 </table>
 
 <br>
 
-<hr>
-
-<div class="small">
-  <b>Catatan:</b> Mohon lakukan pembayaran sesuai total tagihan di atas. Terima kasih atas kerja samanya.
-</div>
-
-<br>
-
+{{-- ===== FOOTER ===== --}}
 <table>
   <tr>
-    <td width="55%">
-      Transfer Bank:<br>
+    <td style="width:50%; vertical-align:top; line-height:1.7;">
+      <strong>Transfer Bank:</strong><br>
       BRI : 221601000224568<br>
       BNI : 0050385081<br>
       BCA : 8620008665<br>
       A/n Weenarto Trimaryono
     </td>
-    <td width="45%" class="right">
+    <td style="width:50%; text-align:right; vertical-align:bottom;">
       Hormat Kami,<br><br><br>
       <strong>Sungai Mas Trans</strong>
     </td>
