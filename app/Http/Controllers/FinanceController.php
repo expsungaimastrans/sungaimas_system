@@ -306,7 +306,7 @@ class FinanceController extends Controller
         $shipments  = $invoice->items->map->shipment;
         $grandTotal = (float) $invoice->total;
 
-        $pdf = Pdf::loadView('finance.invoice_pdf', [
+        $pdf = Pdf::loadView('finance.tagihan-pdf', [
             'invoice'    => $invoice,
             'shipments'  => $shipments,
             'grandTotal' => $grandTotal,
