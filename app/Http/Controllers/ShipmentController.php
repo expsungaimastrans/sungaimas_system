@@ -22,7 +22,6 @@ class ShipmentController extends Controller
         $penerima   = trim((string) $request->query('penerima', ''));
         $sp         = trim((string) $request->query('status_pembayaran', ''));
         $sk         = trim((string) $request->query('status_pengiriman', ''));
-        $wa         = trim((string) $request->query('wa_status', ''));
     
         // hanya dipakai kalau role boleh
         $from       = $canDateRange ? $request->query('from') : null;
@@ -43,12 +42,6 @@ class ShipmentController extends Controller
             ->when($penerima, fn($query) => $query->where('nama_penerima', 'like', "%{$penerima}%"))
             ->when($sp, fn($query) => $query->where('status_pembayaran', $sp))
             ->when($sk, fn($query) => $query->where('status_pengiriman', $sk))
-            ->when($wa === 'terkirim', fn($query) => $query->where(function($qq) {
-                $qq->whereNotNull('wa_penerima_sent_at')->orWhereNotNull('wa_pengirim_sent_at');
-            }))
-            ->when($wa === 'belum', fn($query) => $query->where(function($qq) {
-                $qq->whereNull('wa_penerima_sent_at')->whereNull('wa_pengirim_sent_at');
-            }))
             // ✅ hanya jalan jika role boleh date range
             ->when($canDateRange && $from, fn($query) => $query->whereDate('created_at', '>=', $from))
             ->when($canDateRange && $to, fn($query) => $query->whereDate('created_at', '<=', $to));
@@ -90,7 +83,6 @@ class ShipmentController extends Controller
                 'penerima' => $penerima,
                 'status_pembayaran' => $sp,
                 'status_pengiriman' => $sk,
-                'wa_status'         => $wa,
                 // ✅ jika admin, tetap kosong biar gak kepakai
                 'from' => $from,
                 'to' => $to,
@@ -284,7 +276,11 @@ public function exportCsv(Request $request)
         $waPengirim = $this->waLink($shipment->telp_pengirim, $shipment);
         $waPenerima = $this->waLink($shipment->telp_penerima, $shipment);
 
-        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
+        // Cek apakah nomor valid (tidak kosong setelah normalisasi)
+        $canWaPenerima = !empty(preg_replace('/\D/', '', $shipment->telp_penerima ?? ''));
+        $canWaPengirim = !empty(preg_replace('/\D/', '', $shipment->telp_pengirim ?? ''));
+
+        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
     }
 
     public function pdf($id)
