@@ -519,9 +519,7 @@ class ShipmentController extends Controller
              . "Penerima: {$shipment->nama_penerima}\n"
              . "Tujuan: {$shipment->tujuan}\n"
              . "Total: Rp " . number_format((float)$shipment->harga_total, 0, ',', '.') . "\n"
-             . "Silakan download PDF dari tombol Download di halaman nota."
-             . "Harap konfirmasi apabila melakukan pembayaran dengan mengirimkan bukti transfer ke WhatsApp kami."
-             . "\n\nTerima kasih sudah menggunakan layanan kami.";
+             . "Silakan download PDF dari tombol Download di halaman nota.";
 
         return "https://wa.me/{$phone}?text=" . urlencode($msg);
     }
