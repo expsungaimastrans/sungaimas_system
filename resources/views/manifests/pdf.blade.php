@@ -32,7 +32,11 @@
     padding: 4px 4px;
     vertical-align: middle;
     font-size: 10px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 0; /* force table-layout fixed to respect width% */
   }
+
   .data-table .summary td {
     border-top: 2px solid #333;
     border-bottom: 1px solid #333;
@@ -131,7 +135,7 @@
   $prevTujuan = null;
 @endphp
 
-<table class="data-table">
+<table class="data-table" style="table-layout:fixed;">
   <thead>
     <tr>
       <th style="width:3%;">No.</th>
