@@ -190,7 +190,8 @@
     @endforeach
 
     <tr class="summary">
-      <td class="text-right">Total</td>
+      {{-- 10 kolom: Tgl Nota | Kode | Koli | Jenis Barang | Pengirim | Kg | Penerima | Harga | Tujuan | Ket --}}
+      <td colspan="2" class="text-right">Total</td>
       <td class="text-center">{{ $totalKoli }}</td>
       <td colspan="4"></td>
       <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
