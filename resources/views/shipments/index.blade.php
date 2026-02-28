@@ -11,7 +11,6 @@
   $f_penerima = $f['penerima'] ?? '';
   $f_sp = $f['status_pembayaran'] ?? '';
   $f_sk = $f['status_pengiriman'] ?? '';
-  $f_wa = $f['wa_status'] ?? '';
   $f_from = $f['from'] ?? '';
   $f_to = $f['to'] ?? '';
 @endphp
@@ -73,48 +72,32 @@
           </select>
         </div>
 
-        <div class="col-lg-2">
-          <label class="form-label fw-semibold mb-1">Status WA</label>
-          <select name="wa_status" class="form-select">
-            <option value="">Semua</option>
-            <option value="terkirim" {{ $f_wa==='terkirim' ? 'selected' : '' }}>✅ Sudah Terkirim</option>
-            <option value="belum" {{ $f_wa==='belum' ? 'selected' : '' }}>⏳ Belum Dikirim</option>
-          </select>
-        </div>
-
         @if(!empty($canDateRange) && $canDateRange)
-  <div class="col-md-2">
-    <label class="form-label small text-muted">Dari</label>
-    <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control form-control-sm">
-  </div>
-
-  <div class="col-md-2">
-    <label class="form-label small text-muted">Sampai</label>
-    <input type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control form-control-sm">
-  </div>
-@endif
-
+          <div class="col-md-2">
+            <label class="form-label small text-muted">Dari</label>
+            <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted">Sampai</label>
+            <input type="date" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control form-control-sm">
+          </div>
+        @endif
 
         <div class="col-lg-8 d-flex gap-2 justify-content-end">
-            <button class="btn btn-brand">Terapkan</button>
-          
-            <a href="{{ route('shipments.export.csv', request()->query()) }}"
-               class="btn btn-outline-success">
-              Export CSV
-            </a>
-          
-            <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
-          </div>
-          
+          <button class="btn btn-brand">Terapkan</button>
+          <a href="{{ route('shipments.export.csv', request()->query()) }}"
+             class="btn btn-outline-success">Export CSV</a>
+          <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </div>
 
-    
-
-    <div class="text-muted small mt-2">
-      Menampilkan <b>{{ $shipments->total() }}</b> nota
-      @if($f_from || $f_to)
-        (range: {{ $f_from ?: '...' }} → {{ $f_to ?: '...' }})
-      @endif
-    </div>
+      <div class="text-muted small mt-2">
+        Menampilkan <b>{{ $shipments->total() }}</b> nota
+        @if($f_from || $f_to)
+          (range: {{ $f_from ?: '...' }} → {{ $f_to ?: '...' }})
+        @endif
+      </div>
+    </form>
   </div>
 </div>
 
@@ -131,7 +114,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -140,7 +122,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -150,7 +131,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -161,7 +141,6 @@
   </div>
 </div>
 
-
 {{-- TABLE --}}
 <div class="card shadow-sm">
   <div class="card-body">
@@ -170,13 +149,12 @@
         <thead>
           <tr class="text-center">
             <th style="width:140px;">No Nota</th>
-            <th>Pengirim</th>
+            <th style="width:140px;">Detail Barang</th>
             <th>Penerima</th>
             <th style="width:130px;">Tujuan</th>
             <th style="width:140px;">Total</th>
             <th style="width:150px;">Pengiriman</th>
             <th style="width:150px;">Pembayaran</th>
-            <th style="width:110px;">WA</th>
             <th style="width:240px;">Aksi</th>
           </tr>
         </thead>
@@ -184,7 +162,12 @@
         @forelse($shipments as $s)
           <tr>
             <td class="text-center fw-bold">{{ $s->no_nota }}</td>
-            <td>{{ $s->nama_pengirim }}</td>
+
+            {{-- DETAIL BARANG: hanya nama barang --}}
+            <td style="font-size:11px;">
+              {{ $s->items->pluck('nama_barang')->filter()->implode(', ') ?: '-' }}
+            </td>
+
             <td>{{ $s->nama_penerima }}</td>
             <td class="text-center">{{ $s->tujuan }}</td>
             <td class="text-end">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
@@ -200,67 +183,46 @@
             </td>
 
             {{-- PEMBAYARAN --}}
-<td class="text-center">
-  @php
-      $payClass = match($s->status_pembayaran){
-          'LUNAS' => 'text-bg-success',
-          'PIUTANG' => 'text-bg-warning',
-          'BATAL' => 'text-bg-danger',
-          default => 'text-bg-secondary'
-      };
-
-      $canEditPayment = auth()->check() 
-          && in_array(auth()->user()->role, ['owner','finance'], true);
-  @endphp
-
-  <span id="pay-{{ $s->id }}" class="badge {{ $payClass }}">
-      {{ $s->status_pembayaran }}
-  </span>
-
-  @if($canEditPayment)
-      <div class="mt-2">
-          <select class="form-select form-select-sm"
-              onchange="setPembayaran({{ $s->id }}, this.value)">
-
-              <option value="">-- ubah --</option>
-
-              @foreach(['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'] as $opt)
-                  <option value="{{ $opt }}"
-                      {{ $s->status_pembayaran === $opt ? 'selected' : '' }}>
-                      {{ $opt }}
-                  </option>
-              @endforeach
-
-          </select>
-      </div>
-  @else
-      <div class="small text-muted mt-2">
-          Tidak dapat diubah
-      </div>
-  @endif
-</td>
-
-            
-
-            {{-- STATUS WA --}}
             <td class="text-center">
-              @if($s->wa_penerima_sent_at || $s->wa_pengirim_sent_at)
-                <span class="badge text-bg-success">✓ Terkirim</span>
-                @if($s->wa_penerima_sent_at)
-                  <div class="text-muted" style="font-size:10px;">P: {{ \Carbon\Carbon::parse($s->wa_penerima_sent_at)->format('d/m H:i') }}</div>
-                @endif
-                @if($s->wa_pengirim_sent_at)
-                  <div class="text-muted" style="font-size:10px;">G: {{ \Carbon\Carbon::parse($s->wa_pengirim_sent_at)->format('d/m H:i') }}</div>
-                @endif
+              @php
+                $payClass = match($s->status_pembayaran){
+                  'LUNAS'      => 'text-bg-success',
+                  'PIUTANG'    => 'text-bg-warning',
+                  'BATAL'      => 'text-bg-danger',
+                  default      => 'text-bg-secondary'
+                };
+                $canEditPayment = auth()->check()
+                  && in_array(strtolower(auth()->user()->role), ['owner', 'finance'], true);
+              @endphp
+
+              <span id="pay-{{ $s->id }}" class="badge {{ $payClass }}">
+                {{ $s->status_pembayaran }}
+              </span>
+
+              @if($canEditPayment)
+                <div class="mt-2">
+                  <select class="form-select form-select-sm"
+                          onchange="setPembayaran({{ $s->id }}, this.value)">
+                    <option value="">-- ubah --</option>
+                    @foreach(['BELUM_BAYAR','LUNAS','PIUTANG','BATAL'] as $opt)
+                      <option value="{{ $opt }}"
+                        {{ $s->status_pembayaran === $opt ? 'selected' : '' }}>
+                        {{ $opt }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
               @else
-                <span class="badge text-bg-secondary">Belum</span>
+                <div class="small text-muted mt-2">Tidak dapat diubah</div>
               @endif
             </td>
 
             {{-- AKSI --}}
             <td class="text-center">
               <div class="d-flex flex-wrap justify-content-center gap-2">
-                <a href="/shipments/{{ $s->id }}/pdf" class="btn btn-sm btn-outline-secondary">PDF</a>
+                <a href="{{ route('shipments.pdfHalf', $s->id) }}" class="btn btn-sm btn-outline-secondary">
+                  PDF Half
+                </a>
                 <a href="/shipments/{{ $s->id }}/edit" class="btn btn-sm btn-outline-primary">Edit</a>
                 <a href="/shipments/{{ $s->id }}/success" class="btn btn-sm btn-brand">WA/Download</a>
               </div>
@@ -296,38 +258,36 @@ function showMsg(id, text, ok=true){
 }
 
 async function setPembayaran(id, status){
-    if(!status) return;
+  if(!status) return;
 
-    const res = await fetch(`/shipments/${id}/set-pembayaran`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrf(),
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ status })
-    });
+  const res = await fetch(`/shipments/${id}/set-pembayaran`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-TOKEN': csrf(),
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ status })
+  });
 
-    let data = null;
-    try { data = await res.json(); } catch(e) {}
+  let data = null;
+  try { data = await res.json(); } catch(e) {}
 
-    if(!res.ok || !data || !data.ok){
-        showMsg(id, (data && data.message) ? data.message : `Gagal update (HTTP ${res.status})`, false);
-        return;
-    }
+  if(!res.ok || !data || !data.ok){
+    showMsg(id, (data && data.message) ? data.message : `Gagal update (HTTP ${res.status})`, false);
+    return;
+  }
 
-    const badge = document.getElementById(`pay-${id}`);
-    badge.textContent = data.status;
+  const badge = document.getElementById(`pay-${id}`);
+  badge.textContent = data.status;
+  badge.className = 'badge ' + (
+    data.status === 'LUNAS'   ? 'text-bg-success' :
+    data.status === 'PIUTANG' ? 'text-bg-warning'  :
+    data.status === 'BATAL'   ? 'text-bg-danger'   :
+    'text-bg-secondary'
+  );
 
-    badge.className = 'badge ' + (
-        data.status === 'LUNAS' ? 'text-bg-success' :
-        data.status === 'PIUTANG' ? 'text-bg-warning' :
-        data.status === 'BATAL' ? 'text-bg-danger' :
-        'text-bg-secondary'
-    );
-
-    showMsg(id, 'Status pembayaran diperbarui');
+  showMsg(id, 'Status pembayaran diperbarui');
 }
-
 </script>
 @endsection
