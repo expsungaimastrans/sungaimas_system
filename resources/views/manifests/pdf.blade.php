@@ -129,7 +129,6 @@
     return sprintf('%02d_%s', $getOrder($item->tujuan), strtolower($item->penerima ?? ''));
   });
 
-  $no         = 1;
   $totalHarga = 0;
   $totalKoli  = 0;
   $prevTujuan = null;
@@ -138,8 +137,7 @@
 <table class="data-table" style="table-layout:fixed;">
   <thead>
     <tr>
-      <th style="width:3%;">No.</th>
-      <th style="width:8%;">Tgl Nota</th>
+      <th style="width:9%;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
       <th style="width:17%;">Jenis Barang</th>
@@ -172,13 +170,12 @@
       {{-- Spacer antar kota --}}
       @if($prevTujuan !== null && $tujuanNow !== $prevTujuan)
         <tr class="spacer">
-          <td colspan="11"></td>
+          <td colspan="10"></td>
         </tr>
       @endif
       @php $prevTujuan = $tujuanNow; @endphp
 
       <tr>
-        <td class="text-center">{{ $no++ }}.</td>
         <td class="text-center" style="font-size:9px;">{{ $tglNota }}</td>
         <td class="text-center" style="font-size:9px;">{{ $item->kode ?? '-' }}</td>
         <td class="text-center">{{ $koli ?: '-' }}</td>
@@ -193,8 +190,7 @@
     @endforeach
 
     <tr class="summary">
-      <td colspan="2" class="text-right">Total</td>
-      <td></td>
+      <td class="text-right">Total</td>
       <td class="text-center">{{ $totalKoli }}</td>
       <td colspan="4"></td>
       <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
