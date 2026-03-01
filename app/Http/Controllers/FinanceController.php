@@ -50,16 +50,19 @@ class FinanceController extends Controller
 
         $jalurOrder = [
             'labuan bajo' => 1, 'labuanbajo' => 1,
-            'lembor'      => 2,
-            'ruteng'      => 3,
-            'borong'      => 4,
-            'aimere'      => 5, 'aimire' => 5,
-            'cancar'      => 6,
-            'bajawa'      => 7,
-            'soa'         => 8,
-            'bowae'       => 9,
-            'mbay'        => 10, 'nagekeo' => 10,
-            'ende'        => 11,
+    'lembor'      => 2,
+    'ruteng'      => 3,
+    'borong'      => 4,
+    'aimere'      => 5, 'aimire' => 5,
+    'cancar'      => 6,
+    'bajawa'      => 7,
+    'mataloko'    => 9,
+    'soa'         => 9,
+    'bowae'       => 10,
+    'raja'        => 11,
+    'mbay'        => 12, 'nagekeo' => 12,
+    'riung'       => 13,
+    'ende'        => 14,
         ];
 
         $shipments = $shipments->sortBy(function ($s) use ($jalurOrder) {

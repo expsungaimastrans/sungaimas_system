@@ -110,10 +110,13 @@
     'aimere'      => 5, 'aimire' => 5,
     'cancar'      => 6,
     'bajawa'      => 7,
-    'soa'         => 8,
-    'bowae'       => 9,
-    'mbay'        => 10, 'nagekeo' => 10,
-    'ende'        => 11,
+    'mataloko'    => 9,
+    'soa'         => 9,
+    'bowae'       => 10,
+    'raja'        => 11,
+    'mbay'        => 12, 'nagekeo' => 12,
+    'riung'       => 13,
+    'ende'        => 14,
   ];
 
   $getOrder = function($tujuan) use ($jalurOrder) {
