@@ -131,22 +131,23 @@
 
   $totalHarga = 0;
   $totalKoli  = 0;
+  $totalKg    = 0;
   $prevTujuan = null;
 @endphp
 
 <table class="data-table" style="table-layout:fixed;">
   <thead>
     <tr>
-      <th style="width:10%;">Tgl Nota</th>
+      <th style="width:9%;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
       <th style="width:17%;">Jenis Barang</th>
       <th style="width:12%;">Pengirim</th>
-      <th style="width:7%;">Kg</th>
+      <th style="width:5%;">Kg</th>
       <th style="width:13%;">Penerima</th>
       <th style="width:10%;">Harga</th>
       <th style="width:8%;">Tujuan</th>
-      <th style="width:10%;">Keterangan</th>
+      <th style="width:13%;">Keterangan</th>
     </tr>
   </thead>
   <tbody>
@@ -157,6 +158,7 @@
         $tujuanNow = strtolower(trim($item->tujuan ?? ''));
         $totalHarga += $harga;
         $totalKoli  += $koli;
+        $totalKg    += (float)($item->kg ?? 0);
 
         // Ambil tanggal dari shipment jika ada relasinya
         $tglNota = '-';
@@ -182,19 +184,20 @@
         <td style="font-size:9px;">{{ $item->jenis_barang ?? '-' }}</td>
         <td style="font-size:9px;">{{ $item->pengirim ?? '' }}</td>
         <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
-        <td style="font-size:9px;">{{ $item->penerima ?? '-' }}</td>
+        <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
         <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
-        <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
+        <td class="text-center" style="font-size:9px;">{{ $item->tujuan ?? '-' }}</td>
         <td style="font-size:9px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
 
     <tr class="summary">
-      {{-- 10 kolom: Tgl Nota | Kode | Koli | Jenis Barang | Pengirim | Kg | Penerima | Harga | Tujuan | Ket --}}
-      <td colspan="2" class="text-right">Total</td>
-      <td class="text-center">{{ $totalKoli }}</td>
-      <td colspan="4"></td>
-      <td class="text-right">{{ number_format($totalHarga, 0, ',', '.') }}</td>
+      {{-- Tgl Nota | Kode | Koli | Jenis Barang | Pengirim | Kg | Penerima | Harga | Tujuan | Keterangan --}}
+      <td colspan="3" class="text-right" style="font-size:10px;">Total</td>
+      <td colspan="2"></td>
+      <td class="text-center" style="font-size:10px;">{{ number_format($totalKg, 1, '.', '') }}</td>
+      <td></td>
+      <td class="text-right" style="font-size:10px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>
       <td colspan="2"></td>
     </tr>
   </tbody>
