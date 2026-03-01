@@ -138,16 +138,16 @@
 <table class="data-table" style="table-layout:fixed;">
   <thead>
     <tr>
-      <th style="width:9%;">Tgl Nota</th>
+      <th style="width:10%;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
       <th style="width:17%;">Jenis Barang</th>
       <th style="width:12%;">Pengirim</th>
-      <th style="width:5%;">Kg</th>
+      <th style="width:8%;">Kg</th>
       <th style="width:13%;">Penerima</th>
-      <th style="width:10%;">Harga</th>
+      <th style="width:11%;">Harga</th>
       <th style="width:8%;">Tujuan</th>
-      <th style="width:13%;">Keterangan</th>
+      <th style="width:8%;">Ket.</th>
     </tr>
   </thead>
   <tbody>
@@ -186,7 +186,7 @@
         <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
         <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
         <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
-        <td class="text-center" style="font-size:9px;">{{ $item->tujuan ?? '-' }}</td>
+        <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
         <td style="font-size:9px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
@@ -195,9 +195,9 @@
       {{-- Tgl Nota | Kode | Koli | Jenis Barang | Pengirim | Kg | Penerima | Harga | Tujuan | Keterangan --}}
       <td colspan="3" class="text-right" style="font-size:10px;">Total</td>
       <td colspan="2"></td>
-      <td class="text-center" style="font-size:10px;">{{ number_format($totalKg, 1, '.', '') }}</td>
+      <td class="text-center" style="font-size:6px;">{{ number_format($totalKg, 1, '.', '') }}</td>
       <td></td>
-      <td class="text-right" style="font-size:10px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>
+      <td class="text-right" style="font-size:8px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>
       <td colspan="2"></td>
     </tr>
   </tbody>
