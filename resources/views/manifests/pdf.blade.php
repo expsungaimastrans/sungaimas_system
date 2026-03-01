@@ -138,15 +138,15 @@
   <thead>
     <tr>
       <th style="width:9%;">Tgl Nota</th>
-      <th style="width:9%;">Kode</th>
+      <th style="width:10%;">Kode</th>
       <th style="width:4%;">Koli</th>
-      <th style="width:17%;">Jenis Barang</th>
-      <th style="width:12%;">Pengirim</th>
+      <th style="width:24%;">Jenis Barang</th>
+      <th style="width:14%;">Pengirim</th>
       <th style="width:5%;">Kg</th>
-      <th style="width:12%;">Penerima</th>
+      <th style="width:17%;">Penerima</th>
       <th style="width:10%;">Harga</th>
-      <th style="width:7%;">Tujuan</th>
-      <th style="width:13%;">Keterangan</th>
+      <th style="width:5%;">Tujuan</th>
+      <th style="width:2%;">Ket</th>
     </tr>
   </thead>
   <tbody>
