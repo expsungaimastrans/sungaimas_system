@@ -31,7 +31,7 @@
     border-right: 1px solid #333;
     padding: 4px 4px;
     vertical-align: middle;
-    font-size: 10px;
+    font-size: 12px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 0; /* force table-layout fixed to respect width% */
