@@ -19,10 +19,10 @@
   .data-table th {
     background: #f0f0f0;
     border: 1px solid #333;
-    padding: 5px 3px;
+    padding: 3px 1px;
     font-weight: bold;
     text-align: center;
-    font-size: 10px;
+    font-size: 12px;
   }
   .data-table td {
     border-top: 1px dashed #999;
