@@ -284,10 +284,12 @@ public function exportCsv(Request $request)
     {
         $shipment = Shipment::with('items')->findOrFail($id);
 
-        $waPengirim = $this->waLink($shipment->telp_pengirim, $shipment);
-        $waPenerima = $this->waLink($shipment->telp_penerima, $shipment);
+        $waPengirim    = $this->waLink($shipment->telp_pengirim, $shipment);
+        $waPenerima    = $this->waLink($shipment->telp_penerima, $shipment);
+        $canWaPenerima = (bool) $this->normalizePhone($shipment->telp_penerima);
+        $canWaPengirim = (bool) $this->normalizePhone($shipment->telp_pengirim);
 
-        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
+        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
     }
 
     public function pdf($id)
