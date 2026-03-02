@@ -115,7 +115,7 @@ class ManifestController extends Controller
         $showHarga  = $request->query('show_harga', '1') !== '0';
 
         $pdf = Pdf::loadView('manifests.pdf', compact('manifest', 'showHarga'))
-            ->setPaper('a4', 'landscape');
+            ->setPaper('a4', 'portrait');
 
         return $pdf->stream("manifest-{$manifest->no_manifest}.pdf");
     }

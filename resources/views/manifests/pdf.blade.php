@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Manifest - {{ $manifest->no_manifest }}</title>
 <style>
-  * { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
+  * { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
   body { margin: 6px 8px; }
   table { width: 100%; border-collapse: collapse; }
 
@@ -19,19 +19,19 @@
   .data-table th {
     background: #f0f0f0;
     border: 1px solid #333;
-    padding: 4px 3px;
+    padding: 4px 2px;
     font-weight: bold;
     text-align: center;
-    font-size: 11px;
+    font-size: 12px;
   }
   .data-table td {
     border-top: 1px dashed #999;
     border-bottom: 1px dashed #999;
     border-left: 1px solid #333;
     border-right: 1px solid #333;
-    padding: 3px 3px;
+    padding: 3px 2px;
     vertical-align: middle;
-    font-size: 11px;
+    font-size: 12px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 0; /* force table-layout fixed to respect width% */
@@ -65,7 +65,7 @@
           <td style="border:none; width:60px; vertical-align:middle; padding-right:8px;">
             <img src="{{ public_path('logo.png') }}" width="55" alt="Logo">
           </td>
-          <td style="border:none; vertical-align:middle; line-height:1.4; font-size:11px;">
+          <td style="border:none; vertical-align:middle; line-height:1.4; font-size:12px;">
             <span class="company-name">Sungai Mas Trans</span><br>
             Jl. Pesapen Selatan No.2/A<br>
             Sungai Mas - Indonesia 45311<br>
@@ -183,26 +183,26 @@
       @php $prevTujuan = $tujuanNow; @endphp
 
       <tr>
-        <td class="text-center" style="font-size:10px;">{{ $tglNota }}</td>
-        <td class="text-center" style="font-size:10px;">{{ $item->kode ?? '-' }}</td>
+        <td class="text-center" style="font-size:12px;">{{ $tglNota }}</td>
+        <td class="text-center" style="font-size:12px;">{{ $item->kode ?? '-' }}</td>
         <td class="text-center">{{ $koli ?: '-' }}</td>
-        <td style="font-size:10px;">{{ $item->jenis_barang ?? '-' }}</td>
-        <td style="font-size:10px;">{{ $item->pengirim ?? '' }}</td>
+        <td style="font-size:12px;">{{ $item->jenis_barang ?? '-' }}</td>
+        <td style="font-size:12px;">{{ $item->pengirim ?? '' }}</td>
         <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
-        <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
+        <td style="font-size:12px;">{{ $item->penerima ?? '-' }}</td>
         <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
-        <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
-        <td style="font-size:10px;">{{ $item->keterangan ?? '' }}</td>
+        <td class="text-center" style="font-size:12px;">{{ $item->tujuan ?? '-' }}</td>
+        <td style="font-size:12px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
 
     <tr class="summary">
       {{-- Tgl Nota | Kode | Koli | Jenis Barang | Pengirim | Kg | Penerima | Harga | Tujuan | Keterangan --}}
-      <td colspan="3" class="text-right" style="font-size:10px;">Total</td>
+      <td colspan="3" class="text-right" style="font-size:12px;">Total</td>
       <td colspan="2"></td>
-      <td class="text-center" style="font-size:10px;">{{ number_format($totalKg, 1, '.', '') }}</td>
+      <td class="text-center" style="font-size:12px;">{{ number_format($totalKg, 1, '.', '') }}</td>
       <td></td>
-      @if($showHarga)<td class="text-right" style="font-size:10px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>@else<td></td>@endif
+      @if($showHarga)<td class="text-right" style="font-size:12px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>@else<td></td>@endif
       <td colspan="2"></td>
     </tr>
   </tbody>
