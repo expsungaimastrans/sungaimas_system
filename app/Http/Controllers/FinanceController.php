@@ -50,19 +50,19 @@ class FinanceController extends Controller
 
         $jalurOrder = [
             'labuan bajo' => 1, 'labuanbajo' => 1,
-    'lembor'      => 2,
-    'ruteng'      => 3,
-    'borong'      => 4,
-    'aimere'      => 5, 'aimire' => 5,
-    'cancar'      => 6,
-    'bajawa'      => 7,
-    'mataloko'    => 9,
-    'soa'         => 9,
-    'bowae'       => 10,
-    'raja'        => 11,
-    'mbay'        => 12, 'nagekeo' => 12,
-    'riung'       => 13,
-    'ende'        => 14,
+            'lembor'      => 2,
+            'ruteng'      => 3,
+            'borong'      => 4,
+            'aimere'      => 5, 'aimire' => 5,
+            'cancar'      => 6,
+            'bajawa'      => 7,
+            'soa'         => 8,
+            'bowae'       => 9,
+            'mbay'        => 10, 'nagekeo' => 10,
+            'mataloko'    => 11,
+            'ende'        => 12,
+            'riung'       => 13,
+            'raja'        => 14,
         ];
 
         $shipments = $shipments->sortBy(function ($s) use ($jalurOrder) {
@@ -143,7 +143,11 @@ class FinanceController extends Controller
         $sp       = trim((string) $request->query('status_pembayaran', ''));
 
         $shipments = Shipment::query()
-            // Tampilkan semua nota (tidak harus masuk manifest dulu)
+            // Hanya nota yang sudah masuk manifest atau status DALAM_PENGIRIMAN
+            ->where(function ($q) {
+                $q->whereNotNull('shipments.manifest_id')
+                  ->orWhere('shipments.status_pengiriman', 'DALAM_PENGIRIMAN');
+            })
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
                   ->from('invoice_items')

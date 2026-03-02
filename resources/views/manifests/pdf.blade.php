@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <title>Manifest - {{ $manifest->no_manifest }}</title>
 <style>
-  * { font-family: DejaVu Sans, sans-serif; font-size: 10px; }
-  body { margin: 15px; }
+  * { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
+  body { margin: 6px 8px; }
   table { width: 100%; border-collapse: collapse; }
 
   .company-name { font-size: 13px; font-weight: bold; }
@@ -15,23 +15,23 @@
   .info-grid td { border: none; padding: 2px 4px; font-size: 10px; }
   .info-grid .lbl { font-weight: bold; width: 110px; }
 
-  .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
   .data-table th {
     background: #f0f0f0;
     border: 1px solid #333;
-    padding: 5px 3px;
+    padding: 4px 3px;
     font-weight: bold;
     text-align: center;
-    font-size: 10px;
+    font-size: 11px;
   }
   .data-table td {
     border-top: 1px dashed #999;
     border-bottom: 1px dashed #999;
     border-left: 1px solid #333;
     border-right: 1px solid #333;
-    padding: 4px 4px;
+    padding: 3px 3px;
     vertical-align: middle;
-    font-size: 10px;
+    font-size: 11px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 0; /* force table-layout fixed to respect width% */
@@ -57,7 +57,7 @@
 <body>
 
 {{-- ===== HEADER ===== --}}
-<table style="margin-bottom:10px; border-collapse:collapse;">
+<table style="margin-bottom:6px; border-collapse:collapse;">
   <tr>
     <td style="width:40%; vertical-align:middle;">
       <table style="border-collapse:collapse;">
@@ -65,7 +65,7 @@
           <td style="border:none; width:60px; vertical-align:middle; padding-right:8px;">
             <img src="{{ public_path('logo.png') }}" width="55" alt="Logo">
           </td>
-          <td style="border:none; vertical-align:middle; line-height:1.55; font-size:10px;">
+          <td style="border:none; vertical-align:middle; line-height:1.4; font-size:11px;">
             <span class="company-name">Sungai Mas Trans</span><br>
             Jl. Pesapen Selatan No.2/A<br>
             Sungai Mas - Indonesia 45311<br>
@@ -75,7 +75,7 @@
         </tr>
       </table>
     </td>
-    <td style="width:60%; vertical-align:top; padding-left:20px;">
+    <td style="width:60%; vertical-align:top; padding-left:12px;">
       <div class="manifest-number">MANIFEST {{ $manifest->manifest_ke }}</div>
       <table class="info-grid">
         <tr>
@@ -101,6 +101,8 @@
 
 <hr style="border:0; border-top:1px solid #333; margin:4px 0 0 0;">
 
+@php $showHarga = $showHarga ?? true; @endphp
+
 @php
   $jalurOrder = [
     'labuan bajo' => 1, 'labuanbajo' => 1,
@@ -110,13 +112,13 @@
     'aimere'      => 5, 'aimire' => 5,
     'cancar'      => 6,
     'bajawa'      => 7,
-    'mataloko'    => 9,
-    'soa'         => 9,
-    'bowae'       => 10,
-    'raja'        => 11,
-    'mbay'        => 12, 'nagekeo' => 12,
+    'soa'         => 8,
+    'bowae'       => 9,
+    'mbay'        => 10, 'nagekeo' => 10,
+    'mataloko'    => 11,
+    'ende'        => 12,
     'riung'       => 13,
-    'ende'        => 14,
+    'raja'        => 14,
   ];
 
   $getOrder = function($tujuan) use ($jalurOrder) {
@@ -141,16 +143,16 @@
 <table class="data-table" style="table-layout:fixed;">
   <thead>
     <tr>
-      <th style="width:10%;">Tgl Nota</th>
+      <th style="width:9%;">Tgl Nota</th>
       <th style="width:9%;">Kode</th>
       <th style="width:4%;">Koli</th>
       <th style="width:17%;">Jenis Barang</th>
       <th style="width:12%;">Pengirim</th>
-      <th style="width:8%;">Kg</th>
+      <th style="width:5%;">Kg</th>
       <th style="width:13%;">Penerima</th>
-      <th style="width:11%;">Harga</th>
+      <th style="width:10%;">Harga</th>
       <th style="width:8%;">Tujuan</th>
-      <th style="width:8%;">Ket.</th>
+      <th style="width:13%;">Keterangan</th>
     </tr>
   </thead>
   <tbody>
@@ -181,16 +183,16 @@
       @php $prevTujuan = $tujuanNow; @endphp
 
       <tr>
-        <td class="text-center" style="font-size:9px;">{{ $tglNota }}</td>
-        <td class="text-center" style="font-size:9px;">{{ $item->kode ?? '-' }}</td>
+        <td class="text-center" style="font-size:10px;">{{ $tglNota }}</td>
+        <td class="text-center" style="font-size:10px;">{{ $item->kode ?? '-' }}</td>
         <td class="text-center">{{ $koli ?: '-' }}</td>
-        <td style="font-size:9px;">{{ $item->jenis_barang ?? '-' }}</td>
-        <td style="font-size:9px;">{{ $item->pengirim ?? '' }}</td>
+        <td style="font-size:10px;">{{ $item->jenis_barang ?? '-' }}</td>
+        <td style="font-size:10px;">{{ $item->pengirim ?? '' }}</td>
         <td class="text-center">{{ $item->kg ? number_format((float)$item->kg, 1, '.', '') : 0 }}</td>
         <td style="font-size:10px;">{{ $item->penerima ?? '-' }}</td>
         <td class="text-right">{{ number_format($harga, 0, ',', '.') }}</td>
         <td class="text-center" style="font-size:10px;">{{ $item->tujuan ?? '-' }}</td>
-        <td style="font-size:9px;">{{ $item->keterangan ?? '' }}</td>
+        <td style="font-size:10px;">{{ $item->keterangan ?? '' }}</td>
       </tr>
     @endforeach
 
@@ -198,9 +200,9 @@
       {{-- Tgl Nota | Kode | Koli | Jenis Barang | Pengirim | Kg | Penerima | Harga | Tujuan | Keterangan --}}
       <td colspan="3" class="text-right" style="font-size:10px;">Total</td>
       <td colspan="2"></td>
-      <td class="text-center" style="font-size:8px;">{{ number_format($totalKg, 1, '.', '') }}</td>
+      <td class="text-center" style="font-size:10px;">{{ number_format($totalKg, 1, '.', '') }}</td>
       <td></td>
-      <td class="text-right" style="font-size:8px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>
+      @if($showHarga)<td class="text-right" style="font-size:10px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>@else<td></td>@endif
       <td colspan="2"></td>
     </tr>
   </tbody>

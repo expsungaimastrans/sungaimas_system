@@ -37,6 +37,11 @@ class Shipment extends Model
     return $this->hasMany(ShipmentItem::class);
 }
 
+public function manifest()
+{
+    return $this->belongsTo(\App\Models\Manifest::class, 'manifest_id');
+}
+
 public function manifestItem()
 {
     return $this->hasOne(\App\Models\ManifestItem::class);
@@ -54,4 +59,3 @@ public function invoiceItems()
 
 
 }
-

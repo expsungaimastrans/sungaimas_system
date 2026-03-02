@@ -48,6 +48,7 @@ class ShipmentController extends Controller
     
         // pagination list
         $shipments = (clone $base)
+            ->with('manifest') // eager load untuk tampilkan manifest_ke di blade
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();

@@ -109,13 +109,13 @@ class ManifestController extends Controller
         });
     }
 
-    public function pdf($id)
+    public function pdf($id, Request $request)
     {
-        $manifest = Manifest::with('items')->findOrFail($id);
-        
+        $manifest   = Manifest::with('items')->findOrFail($id);
+        $showHarga  = $request->query('show_harga', '1') !== '0';
 
-        $pdf = Pdf::loadView('manifests.pdf', compact('manifest'))
-            ->setPaper('a4', 'portrait');
+        $pdf = Pdf::loadView('manifests.pdf', compact('manifest', 'showHarga'))
+            ->setPaper('a4', 'landscape');
 
         return $pdf->stream("manifest-{$manifest->no_manifest}.pdf");
     }
