@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Response;
+use Illuminate\Filesystem\FilesystemAdapter;
 
 class FinanceController extends Controller
 {
@@ -144,27 +148,26 @@ class FinanceController extends Controller
         $sp       = trim((string) $request->query('status_pembayaran', ''));
 
         $shipments = Shipment::query()
-            // Hanya nota yang sudah masuk manifest atau status DALAM_PENGIRIMAN
             ->where(function ($q) {
                 $q->whereNotNull('shipments.manifest_id')
-                  ->orWhere('shipments.status_pengiriman', 'DALAM_PENGIRIMAN');
+                    ->orWhere('shipments.status_pengiriman', 'DALAM_PENGIRIMAN');
             })
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
-                  ->from('invoice_items')
-                  ->whereColumn('invoice_items.shipment_id', 'shipments.id');
+                    ->from('invoice_items')
+                    ->whereColumn('invoice_items.shipment_id', 'shipments.id');
             })
             ->when($q, function ($query) use ($q) {
                 $query->where(function ($qq) use ($q) {
-                    $qq->where('shipments.no_nota',        'like', "%{$q}%")
-                       ->orWhere('shipments.nama_pengirim', 'like', "%{$q}%")
-                       ->orWhere('shipments.nama_penerima', 'like', "%{$q}%")
-                       ->orWhere('shipments.tujuan',        'like', "%{$q}%");
+                    $qq->where('shipments.no_nota', 'like', "%{$q}%")
+                        ->orWhere('shipments.nama_pengirim', 'like', "%{$q}%")
+                        ->orWhere('shipments.nama_penerima', 'like', "%{$q}%")
+                        ->orWhere('shipments.tujuan', 'like', "%{$q}%");
                 });
             })
-            ->when($tujuan,   fn ($query) => $query->where('shipments.tujuan', $tujuan))
-            ->when($penerima, fn ($query) => $query->where('shipments.nama_penerima', 'like', "%{$penerima}%"))
-            ->when($sp,       fn ($query) => $query->where('shipments.status_pembayaran', $sp))
+            ->when($tujuan, fn($query) => $query->where('shipments.tujuan', $tujuan))
+            ->when($penerima, fn($query) => $query->where('shipments.nama_penerima', 'like', "%{$penerima}%"))
+            ->when($sp, fn($query) => $query->where('shipments.status_pembayaran', $sp))
             ->orderByDesc('shipments.created_at')
             ->limit(200)
             ->get();
@@ -204,8 +207,8 @@ class FinanceController extends Controller
                 ->whereIn('shipments.id', $ids)
                 ->whereNotExists(function ($q) {
                     $q->select(DB::raw(1))
-                      ->from('invoice_items')
-                      ->whereColumn('invoice_items.shipment_id', 'shipments.id');
+                        ->from('invoice_items')
+                        ->whereColumn('invoice_items.shipment_id', 'shipments.id');
                 })
                 ->lockForUpdate()
                 ->get();
@@ -303,7 +306,7 @@ class FinanceController extends Controller
     }
 
     // =========================
-    // PDF TAGIHAN
+    // PDF TAGIHAN (stream untuk user login)
     // =========================
     public function invoicePdf(Invoice $invoice)
     {
@@ -324,142 +327,140 @@ class FinanceController extends Controller
     }
 
     // =========================
-    // KIRIM WA TAGIHAN
+    // KIRIM WA TAGIHAN (R2 + Kirimi)
     // =========================
     public function sendInvoiceWa(Request $request, Invoice $invoice)
-{
-    $request->validate([
-        'telp' => ['required', 'string', 'min:8', 'max:30'],
-    ]);
-
-    // 1) Normalisasi nomor
-    $receiver = $this->normalizeWaNumber($request->telp);
-    if (!$receiver) {
-        return back()->with('error', 'Nomor WhatsApp tidak valid. Gunakan 08xxxx atau 62xxxx.');
-    }
-
-    // 2) Pastikan PDF invoice sudah ada di R2, lalu ambil URL publik/presigned
-    try {
-        $mediaUrl = $this->ensureInvoicePdfOnR2AndGetUrl($invoice);
-    } catch (\Throwable $e) {
-        Log::error('Invoice PDF R2 error', ['invoice_id' => $invoice->id, 'err' => $e->getMessage()]);
-        return back()->with('error', 'Gagal siapkan PDF invoice: ' . $e->getMessage());
-    }
-
-    // 3) Kirimi credentials
-    $userCode = config('services.kirimi.user_code') ?: env('KIRIMI_USER_CODE');
-    $secret   = config('services.kirimi.secret') ?: env('KIRIMI_SECRET');
-    $deviceId = config('services.kirimi.device_id') ?: env('KIRIMI_DEVICE_ID');
-
-    if (!$userCode || !$secret || !$deviceId) {
-        return back()->with('error', 'Konfigurasi Kirimi belum lengkap (KIRIMI_USER_CODE/SECRET/DEVICE_ID).');
-    }
-
-    // 4) Pesan WA
-    $total = number_format((float) $invoice->total, 0, ',', '.');
-    $message =
-        "Halo, berikut *Tagihan / Invoice* dari Sungai Mas Trans.\n" .
-        "No: *{$invoice->invoice_no}*\n" .
-        "Kepada: *{$invoice->billed_to}*\n" .
-        "Total: *Rp {$total}*\n\n" .
-        "PDF tagihan terlampir. Terima kasih.";
-
-    // 5) Kirim ke Kirimi (lebih jelas error-nya daripada file_get_contents)
-    try {
-        $resp = Http::timeout(30)->acceptJson()->asJson()->post('https://kirimi.id/api/v1/send-message', [
-            'user_code' => $userCode,
-            'secret'    => $secret,
-            'device_id' => $deviceId,
-            'receiver'  => $receiver,
-            'message'   => $message,
-            'media_url' => $mediaUrl,
-            'enableTypingEffect' => false,
+    {
+        $request->validate([
+            'telp' => ['required', 'string', 'min:8', 'max:30'],
         ]);
 
-        $json = $resp->json();
-
-        Log::info('Kirimi send invoice', [
-            'status' => $resp->status(),
-            'json'   => $json,
-            'invoice_id' => $invoice->id,
-            'receiver' => $receiver,
-            'media_url' => $mediaUrl,
-        ]);
-
-        if (!$resp->ok()) {
-            $msg = is_array($json) ? ($json['message'] ?? $json['error'] ?? $resp->body()) : $resp->body();
-            return back()->with('error', 'Gagal kirim WA: ' . $msg);
+        $receiver = $this->normalizeWaNumber($request->telp);
+        if (!$receiver) {
+            return back()->with('error', 'Nomor WhatsApp tidak valid. Gunakan 08xxxx atau 62xxxx.');
         }
 
-        if (!($json['success'] ?? false)) {
-            $msg = $json['message'] ?? 'Unknown error (Kirimi)';
-            return back()->with('error', 'Gagal kirim WA: ' . $msg);
+        try {
+            $mediaUrl = $this->ensureInvoicePdfOnR2AndGetUrl($invoice);
+        } catch (\Throwable $e) {
+            Log::error('Invoice PDF R2 error', ['invoice_id' => $invoice->id, 'err' => $e->getMessage()]);
+            return back()->with('error', 'Gagal siapkan PDF invoice: ' . $e->getMessage());
         }
 
-        // (opsional) simpan log kirim
-        $invoice->wa_sent_at = now();
-        $invoice->wa_sent_to = $receiver;
-        $invoice->save();
+        $userCode = config('services.kirimi.user_code') ?: env('KIRIMI_USER_CODE');
+        $secret   = config('services.kirimi.secret') ?: env('KIRIMI_SECRET');
+        $deviceId = config('services.kirimi.device_id') ?: env('KIRIMI_DEVICE_ID');
 
-        return back()->with('success', 'Invoice berhasil dikirim via WhatsApp.');
-    } catch (\Throwable $e) {
-        Log::error('Kirimi exception send invoice', ['invoice_id' => $invoice->id, 'err' => $e->getMessage()]);
-        return back()->with('error', 'Gagal kirim WA: ' . $e->getMessage());
+        if (!$userCode || !$secret || !$deviceId) {
+            return back()->with('error', 'Konfigurasi Kirimi belum lengkap (KIRIMI_USER_CODE/SECRET/DEVICE_ID).');
+        }
+
+        $total = number_format((float) $invoice->total, 0, ',', '.');
+        $message =
+            "Halo, berikut *Tagihan / Invoice* dari Sungai Mas Trans.\n" .
+            "No: *{$invoice->invoice_no}*\n" .
+            "Kepada: *{$invoice->billed_to}*\n" .
+            "Total: *Rp {$total}*\n\n" .
+            "PDF tagihan terlampir. Terima kasih.";
+
+        try {
+            /** @var Response $resp */
+            $resp = Http::timeout(30)
+                ->acceptJson()
+                ->asJson()
+                ->post('https://kirimi.id/api/v1/send-message', [
+                    'user_code' => $userCode,
+                    'secret'    => $secret,
+                    'device_id' => $deviceId,
+                    'receiver'  => $receiver,
+                    'message'   => $message,
+                    'media_url' => $mediaUrl,
+                    'enableTypingEffect' => false,
+                ]);
+
+            $json = $resp->json();
+
+            Log::info('Kirimi send invoice', [
+                'status'     => $resp->status(),
+                'json'       => $json,
+                'invoice_id' => $invoice->id,
+                'receiver'   => $receiver,
+                'media_url'  => $mediaUrl,
+            ]);
+
+            if (!$resp->ok()) {
+                $msg = is_array($json) ? ($json['message'] ?? $json['error'] ?? $resp->body()) : $resp->body();
+                return back()->with('error', 'Gagal kirim WA: ' . $msg);
+            }
+
+            if (!($json['success'] ?? false)) {
+                $msg = $json['message'] ?? 'Unknown error (Kirimi)';
+                return back()->with('error', 'Gagal kirim WA: ' . $msg);
+            }
+
+            $invoice->wa_sent_at = now();
+            $invoice->wa_sent_to = $receiver;
+            $invoice->save();
+
+            return back()->with('success', 'Invoice berhasil dikirim via WhatsApp.');
+        } catch (\Throwable $e) {
+            Log::error('Kirimi exception send invoice', ['invoice_id' => $invoice->id, 'err' => $e->getMessage()]);
+            return back()->with('error', 'Gagal kirim WA: ' . $e->getMessage());
+        }
     }
-}
 
-/**
- * Meniru pola "kirim nota": PDF dibuat -> upload ke R2 -> ambil URL publik/presigned.
- */
-private function ensureInvoicePdfOnR2AndGetUrl(Invoice $invoice): string
-{
-    $disk = Storage::disk('r2');
+    /**
+     * Meniru pola "kirim nota": PDF dibuat -> upload ke R2 -> ambil URL publik/presigned.
+     */
+    private function ensureInvoicePdfOnR2AndGetUrl(Invoice $invoice): string
+    {
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk('r2');
 
-    // Path di R2 (rapi & deterministic)
-    $path = "invoices/{$invoice->invoice_no}.pdf";
+        $safeNo = preg_replace('/[^a-zA-Z0-9\-_\.]/', '-', (string) $invoice->invoice_no);
+        if (!$safeNo) $safeNo = 'invoice-' . $invoice->id;
 
-    // Jika belum ada, generate lalu upload
-    if (!$disk->exists($path)) {
-        // ======== GENERATE PDF ========
-        // Samakan dengan sistem nota Anda.
-        // Contoh umum DomPDF: pastikan view-nya sesuai project Anda.
-        $pdfBinary = Pdf::loadView('finance.invoice_pdf', ['invoice' => $invoice])->output();
+        $path = "invoices/{$safeNo}.pdf";
 
-        $disk->put($path, $pdfBinary, [
-            'visibility'   => 'private',          // aman
-            'ContentType'  => 'application/pdf',
-            'CacheControl' => 'no-cache',
-        ]);
+        if (!$disk->exists($path)) {
+            // Generate PDF pakai view yang sama dengan invoicePdf()
+            $invoice->load(['items.shipment.items']);
+            $shipments  = $invoice->items->map->shipment;
+            $grandTotal = (float) $invoice->total;
+
+            $pdfBinary = Pdf::loadView('finance.tagihan-pdf', [
+                'invoice'    => $invoice,
+                'shipments'  => $shipments,
+                'grandTotal' => $grandTotal,
+            ])->setPaper('A4', 'portrait')->output();
+
+            $disk->put($path, $pdfBinary, [
+                'visibility'   => 'private',
+                'ContentType'  => 'application/pdf',
+                'CacheControl' => 'no-cache',
+            ]);
+        }
+
+        // presigned URL (lebih aman)
+        if (method_exists($disk, 'temporaryUrl')) {
+            return $disk->temporaryUrl($path, now()->addMinutes(15));
+        }
+
+        // fallback jika bucket public
+        return $disk->url($path);
     }
 
-    // ======== AMBIL URL ========
-    // Jika bucket Anda PUBLIC, bisa pakai url().
-    // Jika bucket PRIVATE (lebih aman), pakai temporaryUrl().
-    if (method_exists($disk, 'temporaryUrl')) {
-        // Presigned URL 15 menit
-        return $disk->temporaryUrl($path, now()->addMinutes(15));
+    private function normalizeWaNumber(string $input): ?string
+    {
+        $p = preg_replace('/\D+/', '', trim($input));
+        if (!$p) return null;
+
+        if (str_starts_with($p, '08')) return '62' . substr($p, 1);
+        if (str_starts_with($p, '8'))  return '62' . $p;
+        if (str_starts_with($p, '62')) return $p;
+
+        return null;
     }
-
-    // Fallback untuk public bucket
-    return $disk->url($path);
-}
-
-private function normalizeWaNumber(string $input): ?string
-{
-    $p = preg_replace('/\D+/', '', trim($input));
-    if (!$p) return null;
-
-    // 08xxxx -> 628xxxx
-    if (str_starts_with($p, '08')) return '62' . substr($p, 1);
-
-    // 8xxxx -> 628xxxx (kalau user ketik tanpa 0)
-    if (str_starts_with($p, '8')) return '62' . $p;
-
-    // 62xxxx -> ok
-    if (str_starts_with($p, '62')) return $p;
-
-    return null;
-}
 
     // =========================
     // EDIT INVOICE
@@ -542,9 +543,9 @@ private function normalizeWaNumber(string $input): ?string
         $shipments = Shipment::query()
             ->whereNotExists(function ($q) use ($excludeInvoice) {
                 $q->select(DB::raw(1))
-                  ->from('invoice_items')
-                  ->whereColumn('invoice_items.shipment_id', 'shipments.id')
-                  ->when($excludeInvoice, fn ($qq) => $qq->where('invoice_items.invoice_id', '!=', $excludeInvoice));
+                    ->from('invoice_items')
+                    ->whereColumn('invoice_items.shipment_id', 'shipments.id')
+                    ->when($excludeInvoice, fn($qq) => $qq->where('invoice_items.invoice_id', '!=', $excludeInvoice));
             })
             ->orderByDesc('created_at')
             ->limit(100)
