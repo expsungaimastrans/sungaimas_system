@@ -10,7 +10,6 @@ use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -344,32 +343,26 @@ class FinanceController extends Controller
         if (!$phone) {
             return response()->json(['ok' => false, 'message' => 'Nomor telepon tidak valid.'], 422);
         }
-        if (str_starts_with($phone, '08'))     $phone = '62' . substr($phone, 1);
-        elseif (str_starts_with($phone, '8'))   $phone = '62' . $phone;
-        elseif (str_starts_with($phone, '6208')) $phone = '62' . substr($phone, 3);
+        if (str_starts_with($phone, '08'))       $phone = '62' . substr($phone, 1);
+        elseif (str_starts_with($phone, '8'))     $phone = '62' . $phone;
+        elseif (str_starts_with($phone, '6208'))  $phone = '62' . substr($phone, 3);
 
-        // Generate PDF & upload ke R2
-        $invoice->load(['items.shipment.items']);
-        $shipments  = $invoice->items->map->shipment;
-        $grandTotal = (float) $invoice->total;
-
-        $pdfContent = Pdf::loadView('finance.tagihan-pdf', [
-            'invoice'    => $invoice,
-            'shipments'  => $shipments,
-            'grandTotal' => $grandTotal,
-        ])->setPaper('A4', 'portrait')->output();
-
-        $filename = 'tagihan-wa/' . str_replace(['/', '\\'], '-', $invoice->invoice_no) . '-' . time() . '.pdf';
-        Storage::disk('r2')->put($filename, $pdfContent, 'public');
-        $pdfUrl = Storage::disk('r2')->url($filename);
+        // Gunakan URL route PDF yang sudah ada — tidak perlu upload ke storage
+        $pdfUrl = route('finance.invoices.pdf', $invoice);
 
         // Pesan WA
-        $total   = number_format($grandTotal, 0, ',', '.');
-        $message = "Halo, berikut tagihan dari *Sungai Mas Trans*:\n"
-                 . "No. Tagihan: *{$invoice->invoice_no}*\n"
-                 . "Ditagihkan kepada: *{$invoice->billed_to}*\n"
-                 . "Total: *Rp {$total}*\n"
-                 . "Status: {$invoice->status}\n\n"
+        $total   = number_format((float) $invoice->total, 0, ',', '.');
+        $message = "Halo, berikut tagihan dari *Sungai Mas Trans*:
+"
+                 . "No. Tagihan: *{$invoice->invoice_no}*
+"
+                 . "Ditagihkan kepada: *{$invoice->billed_to}*
+"
+                 . "Total: *Rp {$total}*
+"
+                 . "Status: {$invoice->status}
+
+"
                  . "Mohon segera dilakukan pembayaran. Terima kasih.";
 
         $payload = json_encode([
@@ -385,7 +378,8 @@ class FinanceController extends Controller
         $ctx = stream_context_create([
             'http' => [
                 'method'  => 'POST',
-                'header'  => "Content-Type: application/json\r\n",
+                'header'  => "Content-Type: application/json
+",
                 'content' => $payload,
                 'timeout' => 30,
             ],
