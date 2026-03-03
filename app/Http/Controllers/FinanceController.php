@@ -327,86 +327,139 @@ class FinanceController extends Controller
     // KIRIM WA TAGIHAN
     // =========================
     public function sendInvoiceWa(Request $request, Invoice $invoice)
-    {
-        $request->validate(['telp' => 'required|string']);
+{
+    $request->validate([
+        'telp' => ['required', 'string', 'min:8', 'max:30'],
+    ]);
 
-        $userCode = config('services.kirimi.user_code') ?: env('KIRIMI_USER_CODE', '');
-        $secret   = config('services.kirimi.secret')    ?: env('KIRIMI_SECRET', '');
-        $deviceId = config('services.kirimi.device_id') ?: env('KIRIMI_DEVICE_ID', '');
+    // 1) Normalisasi nomor
+    $receiver = $this->normalizeWaNumber($request->telp);
+    if (!$receiver) {
+        return back()->with('error', 'Nomor WhatsApp tidak valid. Gunakan 08xxxx atau 62xxxx.');
+    }
 
-        if (!$userCode || !$secret || !$deviceId) {
-            return response()->json(['ok' => false, 'message' => 'Kirimi credentials belum lengkap.'], 500);
-        }
+    // 2) Pastikan PDF invoice sudah ada di R2, lalu ambil URL publik/presigned
+    try {
+        $mediaUrl = $this->ensureInvoicePdfOnR2AndGetUrl($invoice);
+    } catch (\Throwable $e) {
+        Log::error('Invoice PDF R2 error', ['invoice_id' => $invoice->id, 'err' => $e->getMessage()]);
+        return back()->with('error', 'Gagal siapkan PDF invoice: ' . $e->getMessage());
+    }
 
-        // Normalize nomor telepon
-        $phone = preg_replace('/[^0-9]/', '', $request->telp);
-        if (!$phone) {
-            return response()->json(['ok' => false, 'message' => 'Nomor telepon tidak valid.'], 422);
-        }
-        if (str_starts_with($phone, '08'))       $phone = '62' . substr($phone, 1);
-        elseif (str_starts_with($phone, '8'))     $phone = '62' . $phone;
-        elseif (str_starts_with($phone, '6208'))  $phone = '62' . substr($phone, 3);
+    // 3) Kirimi credentials
+    $userCode = config('services.kirimi.user_code') ?: env('KIRIMI_USER_CODE');
+    $secret   = config('services.kirimi.secret') ?: env('KIRIMI_SECRET');
+    $deviceId = config('services.kirimi.device_id') ?: env('KIRIMI_DEVICE_ID');
 
-        // Gunakan URL route PDF yang sudah ada — tidak perlu upload ke storage
-        $pdfUrl = route('finance.invoices.pdf', $invoice);
+    if (!$userCode || !$secret || !$deviceId) {
+        return back()->with('error', 'Konfigurasi Kirimi belum lengkap (KIRIMI_USER_CODE/SECRET/DEVICE_ID).');
+    }
 
-        // Pesan WA
-        $total   = number_format((float) $invoice->total, 0, ',', '.');
-        $message = "Halo, berikut tagihan dari *Sungai Mas Trans*:
-"
-                 . "No. Tagihan: *{$invoice->invoice_no}*
-"
-                 . "Ditagihkan kepada: *{$invoice->billed_to}*
-"
-                 . "Total: *Rp {$total}*
-"
-                 . "Status: {$invoice->status}
+    // 4) Pesan WA
+    $total = number_format((float) $invoice->total, 0, ',', '.');
+    $message =
+        "Halo, berikut *Tagihan / Invoice* dari Sungai Mas Trans.\n" .
+        "No: *{$invoice->invoice_no}*\n" .
+        "Kepada: *{$invoice->billed_to}*\n" .
+        "Total: *Rp {$total}*\n\n" .
+        "PDF tagihan terlampir. Terima kasih.";
 
-"
-                 . "Mohon segera dilakukan pembayaran. Terima kasih.";
-
-        $payload = json_encode([
-            'user_code'          => $userCode,
-            'secret'             => $secret,
-            'device_id'          => $deviceId,
-            'receiver'           => $phone,
-            'message'            => $message,
-            'media_url'          => $pdfUrl,
+    // 5) Kirim ke Kirimi (lebih jelas error-nya daripada file_get_contents)
+    try {
+        $resp = Http::timeout(30)->acceptJson()->asJson()->post('https://kirimi.id/api/v1/send-message', [
+            'user_code' => $userCode,
+            'secret'    => $secret,
+            'device_id' => $deviceId,
+            'receiver'  => $receiver,
+            'message'   => $message,
+            'media_url' => $mediaUrl,
             'enableTypingEffect' => false,
         ]);
 
-        $ctx = stream_context_create([
-            'http' => [
-                'method'  => 'POST',
-                'header'  => "Content-Type: application/json
-",
-                'content' => $payload,
-                'timeout' => 30,
-            ],
+        $json = $resp->json();
+
+        Log::info('Kirimi send invoice', [
+            'status' => $resp->status(),
+            'json'   => $json,
+            'invoice_id' => $invoice->id,
+            'receiver' => $receiver,
+            'media_url' => $mediaUrl,
         ]);
 
-        $raw      = @file_get_contents('https://kirimi.id/api/v1/send-message', false, $ctx);
-        $response = $raw ? json_decode($raw, true) : null;
-
-        Log::info('Kirimi invoice WA', ['response' => $response]);
-
-        if ($response['success'] ?? false) {
-            $invoice->wa_sent_at = now();
-            $invoice->wa_sent_to = $phone;
-            $invoice->save();
-
-            return response()->json([
-                'ok'      => true,
-                'message' => 'Tagihan berhasil dikirim ke WhatsApp.',
-                'sent_at' => now()->format('d/m/Y H:i'),
-            ]);
+        if (!$resp->ok()) {
+            $msg = is_array($json) ? ($json['message'] ?? $json['error'] ?? $resp->body()) : $resp->body();
+            return back()->with('error', 'Gagal kirim WA: ' . $msg);
         }
 
-        return response()->json([
-            'ok'      => false,
-            'message' => 'Gagal kirim WA: ' . ($response['message'] ?? 'Unknown error'),
-        ], 500);
+        if (!($json['success'] ?? false)) {
+            $msg = $json['message'] ?? 'Unknown error (Kirimi)';
+            return back()->with('error', 'Gagal kirim WA: ' . $msg);
+        }
+
+        // (opsional) simpan log kirim
+        $invoice->wa_sent_at = now();
+        $invoice->wa_sent_to = $receiver;
+        $invoice->save();
+
+        return back()->with('success', 'Invoice berhasil dikirim via WhatsApp.');
+    } catch (\Throwable $e) {
+        Log::error('Kirimi exception send invoice', ['invoice_id' => $invoice->id, 'err' => $e->getMessage()]);
+        return back()->with('error', 'Gagal kirim WA: ' . $e->getMessage());
     }
+}
+
+/**
+ * Meniru pola "kirim nota": PDF dibuat -> upload ke R2 -> ambil URL publik/presigned.
+ */
+private function ensureInvoicePdfOnR2AndGetUrl(Invoice $invoice): string
+{
+    $disk = Storage::disk('r2');
+
+    // Path di R2 (rapi & deterministic)
+    $path = "invoices/{$invoice->invoice_no}.pdf";
+
+    // Jika belum ada, generate lalu upload
+    if (!$disk->exists($path)) {
+        // ======== GENERATE PDF ========
+        // Samakan dengan sistem nota Anda.
+        // Contoh umum DomPDF: pastikan view-nya sesuai project Anda.
+        $pdfBinary = Pdf::loadView('finance.invoice_pdf', ['invoice' => $invoice])->output();
+
+        $disk->put($path, $pdfBinary, [
+            'visibility'   => 'private',          // aman
+            'ContentType'  => 'application/pdf',
+            'CacheControl' => 'no-cache',
+        ]);
+    }
+
+    // ======== AMBIL URL ========
+    // Jika bucket Anda PUBLIC, bisa pakai url().
+    // Jika bucket PRIVATE (lebih aman), pakai temporaryUrl().
+    if (method_exists($disk, 'temporaryUrl')) {
+        // Presigned URL 15 menit
+        return $disk->temporaryUrl($path, now()->addMinutes(15));
+    }
+
+    // Fallback untuk public bucket
+    return $disk->url($path);
+}
+
+private function normalizeWaNumber(string $input): ?string
+{
+    $p = preg_replace('/\D+/', '', trim($input));
+    if (!$p) return null;
+
+    // 08xxxx -> 628xxxx
+    if (str_starts_with($p, '08')) return '62' . substr($p, 1);
+
+    // 8xxxx -> 628xxxx (kalau user ketik tanpa 0)
+    if (str_starts_with($p, '8')) return '62' . $p;
+
+    // 62xxxx -> ok
+    if (str_starts_with($p, '62')) return $p;
+
+    return null;
+}
 
     // =========================
     // EDIT INVOICE
