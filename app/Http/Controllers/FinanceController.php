@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 
+// Tambahan untuk R2 + Kirimi
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Response;
+use Illuminate\Filesystem\FilesystemAdapter;
+
 class FinanceController extends Controller
 {
     // =========================
@@ -144,7 +150,6 @@ class FinanceController extends Controller
         $sp       = trim((string) $request->query('status_pembayaran', ''));
 
         $shipments = Shipment::query()
-            // Hanya nota yang sudah masuk manifest atau status DALAM_PENGIRIMAN
             ->where(function ($q) {
                 $q->whereNotNull('shipments.manifest_id')
                   ->orWhere('shipments.status_pengiriman', 'DALAM_PENGIRIMAN');
@@ -303,7 +308,7 @@ class FinanceController extends Controller
     }
 
     // =========================
-    // PDF TAGIHAN
+    // PDF TAGIHAN (untuk user login)
     // =========================
     public function invoicePdf(Invoice $invoice)
     {
@@ -324,7 +329,7 @@ class FinanceController extends Controller
     }
 
     // =========================
-    // KIRIM WA TAGIHAN
+    // KIRIM WA TAGIHAN (FIX: pakai R2 URL)
     // =========================
     public function sendInvoiceWa(Request $request, Invoice $invoice)
     {
@@ -338,63 +343,66 @@ class FinanceController extends Controller
             return response()->json(['ok' => false, 'message' => 'Kirimi credentials belum lengkap.'], 500);
         }
 
-        // Normalize nomor telepon
-        $phone = preg_replace('/[^0-9]/', '', $request->telp);
+        $phone = $this->normalizeWaNumber($request->telp);
         if (!$phone) {
             return response()->json(['ok' => false, 'message' => 'Nomor telepon tidak valid.'], 422);
         }
-        if (str_starts_with($phone, '08'))       $phone = '62' . substr($phone, 1);
-        elseif (str_starts_with($phone, '8'))     $phone = '62' . $phone;
-        elseif (str_starts_with($phone, '6208'))  $phone = '62' . substr($phone, 3);
 
-        // Gunakan URL route PDF yang sudah ada — tidak perlu upload ke storage
-        $pdfUrl = route('finance.invoices.pdf', $invoice);
+        // ✅ BUAT PDF + UPLOAD KE R2 + AMBIL URL PRESIGNED
+        try {
+            $mediaUrl = $this->ensureInvoicePdfOnR2AndGetUrl($invoice);
+        } catch (\Throwable $e) {
+            Log::error('sendInvoiceWa: gagal siapkan pdf ke R2', [
+                'invoice_id' => $invoice->id,
+                'err' => $e->getMessage(),
+            ]);
+            return response()->json(['ok' => false, 'message' => 'Gagal siapkan PDF: ' . $e->getMessage()], 500);
+        }
 
         // Pesan WA
         $total   = number_format((float) $invoice->total, 0, ',', '.');
-        $message = "Halo, berikut tagihan dari *Sungai Mas Trans*:
-"
-                 . "No. Tagihan: *{$invoice->invoice_no}*
-"
-                 . "Ditagihkan kepada: *{$invoice->billed_to}*
-"
-                 . "Total: *Rp {$total}*
-"
-                 . "Status: {$invoice->status}
-
-"
+        $message = "Halo, berikut tagihan dari *Sungai Mas Trans*:\n"
+                 . "No. Tagihan: *{$invoice->invoice_no}*\n"
+                 . "Ditagihkan kepada: *{$invoice->billed_to}*\n"
+                 . "Total: *Rp {$total}*\n"
+                 . "Status: {$invoice->status}\n\n"
                  . "Mohon segera dilakukan pembayaran. Terima kasih.";
 
-        $payload = json_encode([
-            'user_code'          => $userCode,
-            'secret'             => $secret,
-            'device_id'          => $deviceId,
-            'receiver'           => $phone,
-            'message'            => $message,
-            'media_url'          => $pdfUrl,
-            'enableTypingEffect' => false,
-        ]);
+        try {
+            /** @var Response $resp */
+            $resp = Http::timeout(35)
+                ->acceptJson()
+                ->asJson()
+                ->post('https://kirimi.id/api/v1/send-message', [
+                    'user_code'          => $userCode,
+                    'secret'             => $secret,
+                    'device_id'          => $deviceId,
+                    'receiver'           => $phone,
+                    'message'            => $message,
+                    'media_url'          => $mediaUrl,
+                    'enableTypingEffect' => false,
+                ]);
 
-        $ctx = stream_context_create([
-            'http' => [
-                'method'  => 'POST',
-                'header'  => "Content-Type: application/json
-",
-                'content' => $payload,
-                'timeout' => 30,
-            ],
-        ]);
+            $json = $resp->json();
 
-        $raw      = @file_get_contents('https://kirimi.id/api/v1/send-message', false, $ctx);
-        $response = $raw ? json_decode($raw, true) : null;
+            // ❌ Jangan log secret
+            Log::info('Kirimi invoice WA response', [
+                'invoice_id' => $invoice->id,
+                'receiver'   => $phone,
+                'media_url'  => $mediaUrl,
+                'http_status'=> $resp->status(),
+                'body'       => $json ?: $resp->body(),
+            ]);
 
-        Log::info('Kirimi invoice WA', [
-            'payload'  => json_decode($payload, true),
-            'raw'      => $raw,
-            'response' => $response,
-        ]);
+            if (!$resp->ok()) {
+                $msg = is_array($json) ? ($json['message'] ?? $json['error'] ?? $resp->body()) : $resp->body();
+                return response()->json(['ok' => false, 'message' => 'Gagal kirim WA (HTTP): ' . $msg], 500);
+            }
 
-        if ($response['success'] ?? false) {
+            if (!($json['success'] ?? false)) {
+                return response()->json(['ok' => false, 'message' => 'Gagal kirim WA: ' . ($json['message'] ?? 'Unknown error')], 500);
+            }
+
             $invoice->wa_sent_at = now();
             $invoice->wa_sent_to = $phone;
             $invoice->save();
@@ -404,12 +412,66 @@ class FinanceController extends Controller
                 'message' => 'Tagihan berhasil dikirim ke WhatsApp.',
                 'sent_at' => now()->format('d/m/Y H:i'),
             ]);
+        } catch (\Throwable $e) {
+            Log::error('sendInvoiceWa: exception kirimi', [
+                'invoice_id' => $invoice->id,
+                'err' => $e->getMessage(),
+            ]);
+            return response()->json(['ok' => false, 'message' => 'Koneksi ke Kirimi gagal: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate PDF tagihan (view finance.tagihan-pdf) -> upload ke R2 -> ambil URL presigned/public
+     * Meniru sistem "kirim nota" Anda.
+     */
+    private function ensureInvoicePdfOnR2AndGetUrl(Invoice $invoice): string
+    {
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk('r2');
+
+        // sanitize agar aman untuk nama file
+        $safeNo = preg_replace('/[^a-zA-Z0-9\-_\.]/', '-', (string) $invoice->invoice_no);
+        if (!$safeNo) $safeNo = 'invoice-' . $invoice->id;
+
+        $path = "invoices/{$safeNo}.pdf";
+
+        if (!$disk->exists($path)) {
+            $invoice->load(['items.shipment.items']);
+            $shipments  = $invoice->items->map->shipment;
+            $grandTotal = (float) $invoice->total;
+
+            $pdfBinary = Pdf::loadView('finance.tagihan-pdf', [
+                'invoice'    => $invoice,
+                'shipments'  => $shipments,
+                'grandTotal' => $grandTotal,
+            ])->setPaper('A4', 'portrait')->output();
+
+            $disk->put($path, $pdfBinary, [
+                'visibility'   => 'private',
+                'ContentType'  => 'application/pdf',
+                'CacheControl' => 'no-cache',
+            ]);
         }
 
-        return response()->json([
-            'ok'      => false,
-            'message' => 'Gagal kirim WA: ' . ($response['message'] ?? 'Unknown error'),
-        ], 500);
+        if (method_exists($disk, 'temporaryUrl')) {
+            return $disk->temporaryUrl($path, now()->addMinutes(15));
+        }
+
+        return $disk->url($path);
+    }
+
+    private function normalizeWaNumber(string $input): ?string
+    {
+        $p = preg_replace('/\D+/', '', trim($input));
+        if (!$p) return null;
+
+        if (str_starts_with($p, '08')) return '62' . substr($p, 1);
+        if (str_starts_with($p, '8'))  return '62' . $p;
+        if (str_starts_with($p, '6208')) return '62' . substr($p, 3);
+        if (str_starts_with($p, '62')) return $p;
+
+        return null;
     }
 
     // =========================
