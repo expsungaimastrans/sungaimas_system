@@ -142,17 +142,25 @@ Route::middleware('role:owner,admin,finance')->group(function () {
         // ================================
         // TAGIHAN (INVOICES)
         // ================================
-        // Page buat tagihan (yang sekarang kamu pakai: finance.invoices + finance.invoices.data + finance.invoices.store)
-        Route::get('/invoices',       [FinanceController::class, 'invoices'])->name('finance.invoices');
-        Route::get('/invoices/data',  [FinanceController::class, 'invoiceData'])->name('finance.invoices.data');
-        Route::post('/invoices/store',[FinanceController::class, 'storeInvoice'])->name('finance.invoices.store');
+        // Static routes HARUS di atas {invoice}
+        Route::get('/invoices',                      [FinanceController::class, 'invoices'])->name('finance.invoices');
+        Route::get('/invoices/data',                 [FinanceController::class, 'invoiceData'])->name('finance.invoices.data');
+        Route::post('/invoices/store',               [FinanceController::class, 'storeInvoice'])->name('finance.invoices.store');
+        Route::get('/invoices/list',                 [FinanceController::class, 'listInvoices'])->name('finance.invoices.list');
+        Route::get('/invoices/available-shipments',  [FinanceController::class, 'availableShipments'])->name('finance.invoices.availableShipments');
 
-        // Daftar tagihan
-        Route::get('/invoices/list', [FinanceController::class, 'listInvoices'])->name('finance.invoices.list');
-        Route::post('/invoices/{invoice}/send-wa', [FinanceController::class, 'sendInvoiceWa'])->name('finance.invoices.sendWa');
-        Route::get('/invoices/{invoice}',          [FinanceController::class, 'showInvoice'])->name('finance.invoices.show');
-        Route::post('/invoices/{invoice}/status', [FinanceController::class, 'updateInvoiceStatus'])->name('finance.invoices.status');
-        Route::get('/invoices/{invoice}/pdf', [FinanceController::class, 'invoicePdf'])->name('finance.invoices.pdf');
+        // {invoice} routes — semua yang ada segment setelah {invoice} harus lebih dulu
+        Route::get('/invoices/{invoice}/pdf',         [FinanceController::class, 'invoicePdf'])->name('finance.invoices.pdf');
+        Route::post('/invoices/{invoice}/status',     [FinanceController::class, 'updateInvoiceStatus'])->name('finance.invoices.status');
+        Route::post('/invoices/{invoice}/send-wa',    [FinanceController::class, 'sendInvoiceWa'])->name('finance.invoices.sendWa');
+        Route::get('/invoices/{invoice}/edit',
+            [FinanceController::class, 'editInvoice'])->middleware('role:owner')->name('finance.invoices.edit');
+        Route::post('/invoices/{invoice}/add-shipment/{shipment}',
+            [FinanceController::class, 'addShipmentToInvoice'])->middleware('role:owner')->name('finance.invoices.addShipment');
+        Route::delete('/invoices/{invoice}/remove-shipment/{shipment}',
+            [FinanceController::class, 'removeShipmentFromInvoice'])->middleware('role:owner')->name('finance.invoices.removeShipment');
+        // Route catch-all {invoice} HARUS paling bawah
+        Route::get('/invoices/{invoice}',             [FinanceController::class, 'showInvoice'])->name('finance.invoices.show');
     });
 
 });
