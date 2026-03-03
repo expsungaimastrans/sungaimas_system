@@ -20,10 +20,14 @@ class Invoice extends Model
         'status',
         'payment_proof_path',
         'paid_at',
+        // WA
+        'wa_sent_to',
+        'wa_sent_at',
     ];
 
     protected $casts = [
-        'paid_at' => 'datetime',
+        'paid_at'    => 'datetime',
+        'wa_sent_at' => 'datetime',
     ];
 
     public function items()
