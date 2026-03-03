@@ -7,6 +7,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FileController;
+use App\Http\Controllers\WhatsappController;
 
 // ===================================================
 // PUBLIC
@@ -16,6 +18,11 @@ Route::get('/', fn () => redirect()->route('login'));
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
+
+// FILE VIEWER
+Route::get('/files/view/{path}', [FileController::class, 'viewBukti'])
+    ->where('path', '.+')
+    ->name('files.view');
 
 // ===================================================
 // AUTH REQUIRED
@@ -64,6 +71,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:owner,finance')
         ->name('shipments.export.csv');
 
+
+    // Kirim nota PDF via WhatsApp
+    Route::post('/shipments/{shipment}/send-wa', [WhatsappController::class, 'send'])
+        ->middleware('role:owner,admin,finance')->name('shipments.sendWa');
 
     // ================================
     // MANIFESTS
