@@ -293,18 +293,6 @@ public function exportCsv(Request $request)
         return $pdf->stream('nota-half-' . $fileNo . '.pdf');
     }
 
-    public function pdf($id)
-    {
-        $shipment = Shipment::with('items')->findOrFail($id);
-
-        $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-            ->setPaper('A4', 'portrait');
-
-        $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
-
-        return $pdf->stream('nota-' . $fileNo . '.pdf');
-    }
-
     /**
      * EDIT
      */
