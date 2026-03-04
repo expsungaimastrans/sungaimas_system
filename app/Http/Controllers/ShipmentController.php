@@ -48,6 +48,7 @@ class ShipmentController extends Controller
     
         // pagination list
         $shipments = (clone $base)
+            ->with('manifest')
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -196,11 +197,22 @@ public function exportCsv(Request $request)
             'barang.*.harga' => 'required|numeric|min:0',
         ]);
 
-        // ===== nomor urut di bulan ini (4 digit) =====
+        // ===== nomor urut: ambil max dari prefix MMXXXX bulan ini =====
         $bulan = now()->format('m');
-        $seq = Shipment::whereYear('created_at', now()->year)
+
+        $maxSeq = Shipment::whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
-            ->count() + 1;
+            ->get(['no_nota'])
+            ->map(function ($s) use ($bulan) {
+                $kode = explode('/', $s->no_nota ?? '')[0];
+                if (str_starts_with($kode, $bulan) && is_numeric($kode)) {
+                    return (int) substr($kode, strlen($bulan));
+                }
+                return 0;
+            })
+            ->max() ?? 0;
+
+        $seq  = $maxSeq + 1;
         $urut = str_pad($seq, 4, '0', STR_PAD_LEFT);
 
         // ===== total koli dalam nota =====
@@ -273,10 +285,12 @@ public function exportCsv(Request $request)
     {
         $shipment = Shipment::with('items')->findOrFail($id);
 
-        $waPengirim = $this->waLink($shipment->telp_pengirim, $shipment);
-        $waPenerima = $this->waLink($shipment->telp_penerima, $shipment);
+        $waPengirim    = $this->waLink($shipment->telp_pengirim, $shipment);
+        $waPenerima    = $this->waLink($shipment->telp_penerima, $shipment);
+        $canWaPenerima = (bool) $this->normalizePhone($shipment->telp_penerima);
+        $canWaPengirim = (bool) $this->normalizePhone($shipment->telp_pengirim);
 
-        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
+        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
     }
 
     public function pdfHalf($id)
