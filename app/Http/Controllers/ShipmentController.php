@@ -48,7 +48,6 @@ class ShipmentController extends Controller
     
         // pagination list
         $shipments = (clone $base)
-            ->with('manifest') // eager load untuk tampilkan manifest_ke di blade
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -197,22 +196,11 @@ public function exportCsv(Request $request)
             'barang.*.harga' => 'required|numeric|min:0',
         ]);
 
-        // ===== nomor urut: ambil max dari prefix MMXXXX bulan ini =====
+        // ===== nomor urut di bulan ini (4 digit) =====
         $bulan = now()->format('m');
-
-        $maxSeq = Shipment::whereYear('created_at', now()->year)
+        $seq = Shipment::whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
-            ->get(['no_nota'])
-            ->map(function ($s) use ($bulan) {
-                $kode = explode('/', $s->no_nota ?? '')[0];
-                if (str_starts_with($kode, $bulan) && is_numeric($kode)) {
-                    return (int) substr($kode, strlen($bulan));
-                }
-                return 0;
-            })
-            ->max() ?? 0;
-
-        $seq  = $maxSeq + 1;
+            ->count() + 1;
         $urut = str_pad($seq, 4, '0', STR_PAD_LEFT);
 
         // ===== total koli dalam nota =====
@@ -285,29 +273,37 @@ public function exportCsv(Request $request)
     {
         $shipment = Shipment::with('items')->findOrFail($id);
 
-        $waPengirim    = $this->waLink($shipment->telp_pengirim, $shipment);
-        $waPenerima    = $this->waLink($shipment->telp_penerima, $shipment);
-        $canWaPenerima = (bool) $this->normalizePhone($shipment->telp_penerima);
-        $canWaPengirim = (bool) $this->normalizePhone($shipment->telp_pengirim);
+        $waPengirim = $this->waLink($shipment->telp_pengirim, $shipment);
+        $waPenerima = $this->waLink($shipment->telp_penerima, $shipment);
 
-        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
+        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
     }
 
     public function pdfHalf($id)
-{
-    $shipment = Shipment::with('items')->findOrFail($id);
+    {
+        $shipment = Shipment::with('items')->findOrFail($id);
 
-    // Half form: 9.5" x 5.5"
-    $halfPaper = [0, 0, 684, 396];
+        $halfPaper = [0, 0, 684, 396];
 
-    $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-        ->setPaper($halfPaper, 'portrait');
-        
+        $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
+            ->setPaper($halfPaper, 'portrait');
 
-    $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
+        $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
-    return $pdf->stream('nota-half-' . $fileNo . '.pdf');
-}
+        return $pdf->stream('nota-half-' . $fileNo . '.pdf');
+    }
+
+    public function pdf($id)
+    {
+        $shipment = Shipment::with('items')->findOrFail($id);
+
+        $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
+            ->setPaper('A4', 'portrait');
+
+        $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
+
+        return $pdf->stream('nota-' . $fileNo . '.pdf');
+    }
 
     /**
      * EDIT
