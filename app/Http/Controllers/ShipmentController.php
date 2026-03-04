@@ -293,17 +293,21 @@ public function exportCsv(Request $request)
         return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
     }
 
-    public function pdf($id)
-    {
-        $shipment = Shipment::with('items')->findOrFail($id);
+    public function pdfHalf($id)
+{
+    $shipment = Shipment::with('items')->findOrFail($id);
 
-        $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-            ->setPaper('A4', 'portrait');
+    // Half form: 9.5" x 5.5"
+    $halfPaper = [0, 0, 684, 396];
 
-        $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
+    $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
+        ->setPaper($halfPaper, 'portrait');
+        
 
-        return $pdf->stream('nota-' . $fileNo . '.pdf');
-    }
+    $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
+
+    return $pdf->stream('nota-half-' . $fileNo . '.pdf');
+}
 
     /**
      * EDIT
