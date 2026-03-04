@@ -44,7 +44,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
 
-        Route::get('/shipments/{id}/pdf', [ShipmentController::class, 'pdf'])->name('shipments.pdf');
+        Route::get('/shipments/{id}/pdf', [ShipmentController::class, 'pdfHalf'])->name('shipments.pdf');
         Route::get('/shipments/{id}/success', [ShipmentController::class, 'success'])->name('shipments.success');
 
         // API untuk manifest / picker dll
