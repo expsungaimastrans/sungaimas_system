@@ -48,6 +48,7 @@ class ShipmentController extends Controller
     
         // pagination list
         $shipments = (clone $base)
+            ->with('manifest')
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -150,10 +151,10 @@ public function exportCsv(Request $request)
         foreach ($rows as $s) {
             $detailBarang = $s->items->map(function ($it) {
                 $parts = [$it->nama_barang];
-                if ((float)($it->koli ?? 0) > 0)     $parts[] = (float)$it->koli . ' koli';
-                if ((float)($it->berat_kg ?? 0) > 0)  $parts[] = (float)$it->berat_kg . ' kg';
+                if ((float)($it->koli ?? 0) > 0)    $parts[] = (float)$it->koli . ' koli';
+                if ((float)($it->berat_kg ?? 0) > 0) $parts[] = (float)$it->berat_kg . ' kg';
                 return implode(' ', $parts);
-            })->implode(' | ');
+            })->implode("\n");
 
             $totalKoli = $s->items->sum(fn($it) => (float)($it->koli ?? 0));
             $totalKg   = $s->items->sum(fn($it) => (float)($it->berat_kg ?? 0));
