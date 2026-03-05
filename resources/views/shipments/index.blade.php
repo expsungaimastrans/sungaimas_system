@@ -11,7 +11,6 @@
   $f_penerima = $f['penerima'] ?? '';
   $f_sp = $f['status_pembayaran'] ?? '';
   $f_sk = $f['status_pengiriman'] ?? '';
-  $f_wa = $f['wa_status'] ?? '';
   $f_from = $f['from'] ?? '';
   $f_to = $f['to'] ?? '';
 @endphp
@@ -70,15 +69,6 @@
             @foreach(['DITERIMA','DALAM_PENGIRIMAN'] as $x)
               <option value="{{ $x }}" {{ $f_sk===$x ? 'selected' : '' }}>{{ $x }}</option>
             @endforeach
-          </select>
-        </div>
-
-        <div class="col-lg-2">
-          <label class="form-label fw-semibold mb-1">Status WA</label>
-          <select name="wa_status" class="form-select">
-            <option value="">Semua</option>
-            <option value="terkirim" {{ $f_wa==='terkirim' ? 'selected' : '' }}>✅ Sudah Terkirim</option>
-            <option value="belum" {{ $f_wa==='belum' ? 'selected' : '' }}>⏳ Belum Dikirim</option>
           </select>
         </div>
 
@@ -172,11 +162,11 @@
             <th style="width:140px;">No Nota</th>
             <th>Pengirim</th>
             <th>Penerima</th>
+            <th style="min-width:180px;">Detail Barang</th>
             <th style="width:130px;">Tujuan</th>
             <th style="width:140px;">Total</th>
             <th style="width:150px;">Pengiriman</th>
             <th style="width:150px;">Pembayaran</th>
-            <th style="width:110px;">WA</th>
             <th style="width:240px;">Aksi</th>
           </tr>
         </thead>
@@ -186,6 +176,18 @@
             <td class="text-center fw-bold">{{ $s->no_nota }}</td>
             <td>{{ $s->nama_pengirim }}</td>
             <td>{{ $s->nama_penerima }}</td>
+            <td class="small">
+              @foreach($s->items as $it)
+                <div>
+                  <span class="fw-semibold">{{ $it->nama_barang }}</span>
+                  <span class="text-muted">
+                    &middot; {{ (int)$it->koli }} koli
+                    @if((float)$it->berat_kg > 0)&middot; {{ (float)$it->berat_kg }} kg@endif
+                  </span>
+                </div>
+              @endforeach
+              @if($s->items->isEmpty())<span class="text-muted">-</span>@endif
+            </td>
             <td class="text-center">{{ $s->tujuan }}</td>
             <td class="text-end">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
 
@@ -195,7 +197,7 @@
                 {{ $s->status_pengiriman }}
               </span>
               @if($s->manifest_id)
-                <div class="text-muted small mt-1">Manifest: #{{ $s->manifest->manifest_ke ?? $s->manifest_id }}</div>
+                <div class="text-muted small mt-1">Manifest: #{{ $s->manifest_id }}</div>
               @endif
             </td>
 
@@ -242,21 +244,6 @@
 
             
 
-            {{-- STATUS WA --}}
-            <td class="text-center">
-              @if($s->wa_penerima_sent_at || $s->wa_pengirim_sent_at)
-                <span class="badge text-bg-success">✓ Terkirim</span>
-                @if($s->wa_penerima_sent_at)
-                  <div class="text-muted" style="font-size:10px;">P: {{ \Carbon\Carbon::parse($s->wa_penerima_sent_at)->format('d/m H:i') }}</div>
-                @endif
-                @if($s->wa_pengirim_sent_at)
-                  <div class="text-muted" style="font-size:10px;">G: {{ \Carbon\Carbon::parse($s->wa_pengirim_sent_at)->format('d/m H:i') }}</div>
-                @endif
-              @else
-                <span class="badge text-bg-secondary">Belum</span>
-              @endif
-            </td>
-
             {{-- AKSI --}}
             <td class="text-center">
               <div class="d-flex flex-wrap justify-content-center gap-2">
@@ -269,7 +256,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="8" class="text-center text-muted py-4">Belum ada nota.</td>
+            <td colspan="9" class="text-center text-muted py-4">Belum ada nota.</td>
           </tr>
         @endforelse
         </tbody>
