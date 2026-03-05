@@ -142,9 +142,8 @@ public function exportCsv(Request $request)
         fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
         fputcsv($out, [
-            'No Nota','Tanggal','Pengirim','Telp Pengirim',
-            'Penerima','Telp Penerima','Tujuan','Total',
-            'Detail Barang','Total Koli','Total KG',
+            'No Nota','Tanggal','Pengirim','Detail Barang','Total Koli','Total KG',
+            'Telp Pengirim','Penerima','Telp Penerima','Tujuan','Total',
             'Status Pengiriman','Status Pembayaran','Manifest ID','Created At'
         ]);
 
@@ -163,14 +162,14 @@ public function exportCsv(Request $request)
                 $s->no_nota,
                 $s->tanggal,
                 $s->nama_pengirim,
+                $detailBarang,
+                $totalKoli,
+                $totalKg,
                 $s->telp_pengirim,
                 $s->nama_penerima,
                 $s->telp_penerima,
                 $s->tujuan,
                 (float)$s->harga_total,
-                $detailBarang,
-                $totalKoli,
-                $totalKg,
                 $s->status_pengiriman,
                 $s->status_pembayaran,
                 $s->manifest_id,
