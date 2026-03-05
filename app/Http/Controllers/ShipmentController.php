@@ -48,7 +48,7 @@ class ShipmentController extends Controller
     
         // pagination list
         $shipments = (clone $base)
-            ->with(['manifest', 'items'])
+            ->with('manifest')
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -121,9 +121,8 @@ public function exportCsv(Request $request)
         ->when($from, fn($query) => $query->whereDate('created_at', '>=', $from))
         ->when($to, fn($query) => $query->whereDate('created_at', '<=', $to))
         ->orderBy('created_at', 'desc')
-        ->with('items')
         ->get([
-            'id','no_nota','tanggal','nama_pengirim','telp_pengirim',
+            'no_nota','tanggal','nama_pengirim','telp_pengirim',
             'nama_penerima','telp_penerima','tujuan','harga_total',
             'status_pengiriman','status_pembayaran','manifest_id','created_at'
         ]);
@@ -144,21 +143,10 @@ public function exportCsv(Request $request)
         fputcsv($out, [
             'No Nota','Tanggal','Pengirim','Telp Pengirim',
             'Penerima','Telp Penerima','Tujuan','Total',
-            'Detail Barang','Total Koli','Total KG',
             'Status Pengiriman','Status Pembayaran','Manifest ID','Created At'
         ]);
 
         foreach ($rows as $s) {
-            $detailBarang = $s->items->map(function ($it) {
-                $parts = [$it->nama_barang];
-                if ((float)$it->koli > 0)     $parts[] = (float)$it->koli . ' koli';
-                if ((float)$it->berat_kg > 0)  $parts[] = (float)$it->berat_kg . ' kg';
-                return implode(' ', $parts);
-            })->implode(' | ');
-
-            $totalKoli = $s->items->sum(fn($it) => (float)($it->koli ?? 0));
-            $totalKg   = $s->items->sum(fn($it) => (float)($it->berat_kg ?? 0));
-
             fputcsv($out, [
                 $s->no_nota,
                 $s->tanggal,
@@ -168,9 +156,6 @@ public function exportCsv(Request $request)
                 $s->telp_penerima,
                 $s->tujuan,
                 (float)$s->harga_total,
-                $detailBarang,
-                $totalKoli,
-                $totalKg,
                 $s->status_pengiriman,
                 $s->status_pembayaran,
                 $s->manifest_id,
@@ -212,11 +197,22 @@ public function exportCsv(Request $request)
             'barang.*.harga' => 'required|numeric|min:0',
         ]);
 
-        // ===== nomor urut di bulan ini (4 digit) =====
+        // ===== nomor urut: ambil max dari prefix MMXXXX bulan ini =====
         $bulan = now()->format('m');
-        $seq = Shipment::whereYear('created_at', now()->year)
+
+        $maxSeq = Shipment::whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
-            ->count() + 1;
+            ->get(['no_nota'])
+            ->map(function ($s) use ($bulan) {
+                $kode = explode('/', $s->no_nota ?? '')[0];
+                if (str_starts_with($kode, $bulan) && is_numeric($kode)) {
+                    return (int) substr($kode, strlen($bulan));
+                }
+                return 0;
+            })
+            ->max() ?? 0;
+
+        $seq  = $maxSeq + 1;
         $urut = str_pad($seq, 4, '0', STR_PAD_LEFT);
 
         // ===== total koli dalam nota =====
@@ -289,22 +285,26 @@ public function exportCsv(Request $request)
     {
         $shipment = Shipment::with('items')->findOrFail($id);
 
-        $waPengirim = $this->waLink($shipment->telp_pengirim, $shipment);
-        $waPenerima = $this->waLink($shipment->telp_penerima, $shipment);
+        $waPengirim    = $this->waLink($shipment->telp_pengirim, $shipment);
+        $waPenerima    = $this->waLink($shipment->telp_penerima, $shipment);
+        $canWaPenerima = (bool) $this->normalizePhone($shipment->telp_penerima);
+        $canWaPengirim = (bool) $this->normalizePhone($shipment->telp_pengirim);
 
-        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima'));
+        return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
     }
 
-    public function pdf($id)
+    public function pdfHalf($id)
     {
         $shipment = Shipment::with('items')->findOrFail($id);
 
+        $halfPaper = [0, 0, 684, 396];
+
         $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-            ->setPaper('A4', 'portrait');
+            ->setPaper($halfPaper, 'portrait');
 
         $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
-        return $pdf->stream('nota-' . $fileNo . '.pdf');
+        return $pdf->stream('nota-half-' . $fileNo . '.pdf');
     }
 
     /**
