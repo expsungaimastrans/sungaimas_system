@@ -119,6 +119,8 @@ Route::middleware('role:owner,admin,finance')->group(function () {
 
     Route::get('/manifests/{id}/pdf', [ManifestController::class, 'pdf'])
         ->name('manifests.pdf');
+    Route::post('/manifests/{manifest}/status', [ManifestController::class, 'updateStatus'])
+        ->name('manifests.updateStatus');
 });
 
 

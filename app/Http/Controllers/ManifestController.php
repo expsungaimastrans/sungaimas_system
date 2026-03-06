@@ -109,12 +109,11 @@ class ManifestController extends Controller
         });
     }
 
-    public function pdf($id, Request $request)
+    public function pdf($id)
     {
-        $manifest   = Manifest::with('items')->findOrFail($id);
-        $showHarga  = $request->query('show_harga', '1') !== '0';
+        $manifest = Manifest::with('items')->findOrFail($id);
 
-        $pdf = Pdf::loadView('manifests.pdf', compact('manifest', 'showHarga'))
+        $pdf = Pdf::loadView('manifests.pdf', compact('manifest'))
             ->setPaper('a4', 'portrait');
 
         return $pdf->stream("manifest-{$manifest->no_manifest}.pdf");
@@ -231,6 +230,63 @@ class ManifestController extends Controller
             }
 
             return response()->json(['ok' => (bool)$deleted]);
+        });
+    }
+
+    // =========================
+    // UPDATE STATUS MANIFEST
+    // =========================
+    public function updateStatus(Request $request, Manifest $manifest)
+    {
+        $request->validate([
+            'status' => 'required|in:PERSIAPAN,DALAM_PERJALANAN,SELESAI',
+        ]);
+
+        $oldStatus = $manifest->status;
+        $newStatus = $request->status;
+
+        return DB::transaction(function () use ($manifest, $oldStatus, $newStatus) {
+
+            $manifest->status = $newStatus;
+            $manifest->save();
+
+            // Cascade ke shipments jika status SELESAI
+            if ($newStatus === 'SELESAI') {
+                $ids = ManifestItem::where('manifest_id', $manifest->id)
+                    ->whereNotNull('shipment_id')
+                    ->pluck('shipment_id');
+
+                Shipment::whereIn('id', $ids)->update([
+                    'status_pengiriman' => 'SELESAI',
+                ]);
+
+                // Log semua shipment
+                foreach ($ids as $sid) {
+                    $s = Shipment::find($sid);
+                    if ($s) {
+                        $this->logShipment($s, 'SELESAI', "Pengiriman selesai via manifest {$manifest->no_manifest}", [
+                            'manifest_id' => $manifest->id,
+                            'no_manifest' => $manifest->no_manifest,
+                        ]);
+                    }
+                }
+            }
+
+            // Jika dari SELESAI kembali ke status lain, kembalikan ke DALAM_PENGIRIMAN
+            if ($oldStatus === 'SELESAI' && $newStatus !== 'SELESAI') {
+                $ids = ManifestItem::where('manifest_id', $manifest->id)
+                    ->whereNotNull('shipment_id')
+                    ->pluck('shipment_id');
+
+                Shipment::whereIn('id', $ids)
+                    ->where('status_pengiriman', 'SELESAI')
+                    ->update(['status_pengiriman' => 'DALAM_PENGIRIMAN']);
+            }
+
+            return response()->json([
+                'ok'     => true,
+                'status' => $manifest->status,
+            ]);
         });
     }
 

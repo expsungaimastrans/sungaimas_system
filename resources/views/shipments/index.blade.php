@@ -11,7 +11,6 @@
   $f_penerima = $f['penerima'] ?? '';
   $f_sp = $f['status_pembayaran'] ?? '';
   $f_sk = $f['status_pengiriman'] ?? '';
-  $f_wa = $f['wa_status'] ?? '';
   $f_from = $f['from'] ?? '';
   $f_to = $f['to'] ?? '';
 @endphp
@@ -67,18 +66,9 @@
           <label class="form-label fw-semibold mb-1">Pengiriman</label>
           <select name="status_pengiriman" class="form-select">
             <option value="">Semua</option>
-            @foreach(['DITERIMA','DALAM_PENGIRIMAN'] as $x)
+            @foreach(['DITERIMA','DALAM_PENGIRIMAN','SELESAI'] as $x)
               <option value="{{ $x }}" {{ $f_sk===$x ? 'selected' : '' }}>{{ $x }}</option>
             @endforeach
-          </select>
-        </div>
-
-        <div class="col-lg-2">
-          <label class="form-label fw-semibold mb-1">Status WA</label>
-          <select name="wa_status" class="form-select">
-            <option value="">Semua</option>
-            <option value="terkirim" {{ $f_wa==='terkirim' ? 'selected' : '' }}>✅ Sudah Terkirim</option>
-            <option value="belum" {{ $f_wa==='belum' ? 'selected' : '' }}>⏳ Belum Dikirim</option>
           </select>
         </div>
 
@@ -176,7 +166,6 @@
             <th style="width:140px;">Total</th>
             <th style="width:150px;">Pengiriman</th>
             <th style="width:150px;">Pembayaran</th>
-            <th style="width:110px;">WA</th>
             <th style="width:240px;">Aksi</th>
           </tr>
         </thead>
@@ -191,11 +180,18 @@
 
             {{-- PENGIRIMAN (read-only, otomatis dari manifest) --}}
             <td class="text-center">
-              <span class="badge {{ $s->status_pengiriman === 'DALAM_PENGIRIMAN' ? 'text-bg-primary' : 'text-bg-secondary' }}">
+              @php
+                $kirimClass = match($s->status_pengiriman) {
+                  'DALAM_PENGIRIMAN' => 'text-bg-primary',
+                  'SELESAI'          => 'text-bg-success',
+                  default            => 'text-bg-secondary',
+                };
+              @endphp
+              <span class="badge {{ $kirimClass }}">
                 {{ $s->status_pengiriman }}
               </span>
               @if($s->manifest_id)
-                <div class="text-muted small mt-1">Manifest: #{{ $s->manifest->manifest_ke ?? $s->manifest_id }}</div>
+                <div class="text-muted small mt-1">Manifest: #{{ $s->manifest_id }}</div>
               @endif
             </td>
 
@@ -241,21 +237,6 @@
 </td>
 
             
-
-            {{-- STATUS WA --}}
-            <td class="text-center">
-              @if($s->wa_penerima_sent_at || $s->wa_pengirim_sent_at)
-                <span class="badge text-bg-success">✓ Terkirim</span>
-                @if($s->wa_penerima_sent_at)
-                  <div class="text-muted" style="font-size:10px;">P: {{ \Carbon\Carbon::parse($s->wa_penerima_sent_at)->format('d/m H:i') }}</div>
-                @endif
-                @if($s->wa_pengirim_sent_at)
-                  <div class="text-muted" style="font-size:10px;">G: {{ \Carbon\Carbon::parse($s->wa_pengirim_sent_at)->format('d/m H:i') }}</div>
-                @endif
-              @else
-                <span class="badge text-bg-secondary">Belum</span>
-              @endif
-            </td>
 
             {{-- AKSI --}}
             <td class="text-center">
