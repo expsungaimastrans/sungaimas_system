@@ -26,14 +26,12 @@
                     <tr>
                         <th>No Manifest</th>
                         <th>Manifest Ke</th>
-                        <th>Tanggal Muat</th>
+                        <th>Tanggal Keberangkatan</th>
                         <th>Sopir</th>
                         <th>Nopol</th>
-
                         <th>Jumlah Nota</th>
-                        <th>Total Koli</th>
+                        <th>Status Manifest</th>
                         <th>Total Harga</th>
-
                         <th style="width:220px;">Aksi</th>
                     </tr>
                 </thead>
@@ -42,23 +40,30 @@
                 @forelse($manifests as $mn)
                     @php
                         $notaCount = $mn->items()->count();
-
-                        $totalKoli = $mn->items()->sum('koli');
-
                         $totalHarga = $mn->items()->sum('harga');
+
+                        $statusManifest = $mn->status ?? 'PERSIAPAN';
+                        [$statusIcon, $statusClass, $statusLabel] = match($statusManifest) {
+                            'DALAM_PERJALANAN' => ['🚚', 'text-bg-primary',   'Dalam Perjalanan'],
+                            'SELESAI'          => ['✅', 'text-bg-success',   'Selesai'],
+                            default            => ['⏳', 'text-bg-secondary', 'Persiapan'],
+                        };
                     @endphp
 
                     <tr>
                         <td class="text-center fw-bold">{{ $mn->no_manifest }}</td>
                         <td class="text-center">{{ $mn->manifest_ke }}</td>
                         <td class="text-center">
-                            {{ $mn->tanggal_muat ? \Carbon\Carbon::parse($mn->tanggal_muat)->format('d-m-Y') : '-' }}
+                            {{ $mn->keberangkatan ? \Carbon\Carbon::parse($mn->keberangkatan)->format('d-m-Y') : '-' }}
                         </td>
                         <td>{{ $mn->sopir ?? '-' }}</td>
                         <td class="text-center">{{ $mn->nopol ?? '-' }}</td>
-
                         <td class="text-center fw-semibold">{{ $notaCount }}</td>
-                        <td class="text-center fw-semibold">{{ $totalKoli }}</td>
+                        <td class="text-center">
+                            <span class="badge {{ $statusClass }}">
+                                {{ $statusIcon }} {{ $statusLabel }}
+                            </span>
+                        </td>
                         <td class="text-end fw-semibold">Rp {{ number_format($totalHarga,0,',','.') }}</td>
 
                         <td class="text-center">
