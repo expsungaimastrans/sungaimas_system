@@ -610,7 +610,7 @@ public function exportCsv(Request $request)
                 $totalKg   = $s->items->sum(fn($it) => (float)($it->berat_kg ?? 0));
 
                 fputcsv($out, [
-                    optional($s->created_at)->format('d/m/Y'),
+                    $s->tanggal ? \Carbon\Carbon::parse($s->tanggal)->format('d/m/Y') : optional($s->created_at)->format('d/m/Y'),
                     $s->no_nota,
                     $detailBarang,
                     $totalKoli,
