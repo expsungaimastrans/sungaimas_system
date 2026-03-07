@@ -572,13 +572,13 @@ public function exportCsv(Request $request)
             foreach ($jalurOrder as $key => $val) {
                 if (str_contains($tujuan, $key)) { $order = $val; break; }
             }
-            return sprintf('%02d_%s', $order, $tujuan);
+            return sprintf('%02d_%s_%s', $order, $tujuan, strtolower(trim($s->nama_penerima ?? '')));
         })->values();
 
         $filename = 'daftar-muat-' . now()->format('Ymd-His') . '.csv';
         $headers  = [
             'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Content-Disposition' => sprintf('attachment; filename="%s"', $filename),
         ];
 
         $callback = function () use ($sorted) {
