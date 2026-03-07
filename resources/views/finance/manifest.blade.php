@@ -2,6 +2,8 @@
 @section('title','Finance - Manifest')
 
 @section('content')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 @if(session('success'))
   <div class="alert alert-success">{{ session('success') }}</div>
 @endif
@@ -25,6 +27,7 @@
   </div>
 </div>
 
+{{-- INFO MANIFEST --}}
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <div class="row g-2">
@@ -48,7 +51,78 @@
   </div>
 </div>
 
-{{-- FORM TAGIHAN (gabungan nota) --}}
+{{-- STATUS PENGIRIMAN MANIFEST --}}
+@php
+  $statusManifest = $manifest->status ?? 'PERSIAPAN';
+  $statusColor = match($statusManifest) {
+    'DALAM_PERJALANAN' => 'text-bg-primary',
+    'SELESAI'          => 'text-bg-success',
+    default            => 'text-bg-secondary',
+  };
+  $statusLabel = match($statusManifest) {
+    'DALAM_PERJALANAN' => '🚚 Dalam Perjalanan',
+    'SELESAI'          => '✅ Selesai',
+    default            => '⏳ Persiapan',
+  };
+  $borderClass = match($statusManifest) {
+    'SELESAI'          => 'border-success',
+    'DALAM_PERJALANAN' => 'border-primary',
+    default            => 'border-secondary',
+  };
+  $canUpdateStatus = auth()->check() && in_array(auth()->user()->role, ['owner','admin'], true);
+@endphp
+
+<div class="card shadow-sm mb-3 border-2 {{ $borderClass }}">
+  <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <div class="text-muted small mb-1">Status Pengiriman Manifest</div>
+      <span class="badge fs-6 {{ $statusColor }}">{{ $statusLabel }}</span>
+      @if($statusManifest === 'SELESAI')
+        <div class="text-muted small mt-1">Semua nota dalam manifest ini otomatis ditandai <strong>SELESAI</strong>.</div>
+      @endif
+    </div>
+    @if($canUpdateStatus)
+      <div class="d-flex gap-2">
+        @if($statusManifest === 'PERSIAPAN')
+          <button class="btn btn-primary" onclick="updateStatusManifest('DALAM_PERJALANAN')">
+            🚚 Berangkat
+          </button>
+        @elseif($statusManifest === 'DALAM_PERJALANAN')
+          <button class="btn btn-outline-primary" onclick="updateStatusManifest('PERSIAPAN')">
+            ← Kembali ke Persiapan
+          </button>
+          <button class="btn btn-success" onclick="konfirmasiSelesai()">
+            ✅ Selesai
+          </button>
+        @elseif($statusManifest === 'SELESAI')
+          <button class="btn btn-outline-secondary btn-sm" onclick="updateStatusManifest('DALAM_PERJALANAN')">
+            ↩ Batalkan Selesai
+          </button>
+        @endif
+      </div>
+    @endif
+  </div>
+</div>
+
+{{-- Modal konfirmasi selesai --}}
+<div class="modal fade" id="modalSelesai" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Selesai</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tandai manifest <strong>{{ $manifest->no_manifest }}</strong> sebagai <strong>SELESAI</strong>?</p>
+        <p class="text-muted small">Semua <strong>{{ $total }} nota</strong> dalam manifest ini akan otomatis diubah status pengirimannya menjadi <strong>SELESAI</strong>.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-success" onclick="updateStatusManifest('SELESAI')">✅ Ya, Selesai</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {{-- LIST FINANCE UPDATE --}}
 <div class="card shadow-sm">
@@ -97,10 +171,10 @@
             <td class="text-center">
               @php
                 $payClass = match($s->status_pembayaran){
-                  'LUNAS' => 'text-bg-success',
+                  'LUNAS'   => 'text-bg-success',
                   'PIUTANG' => 'text-bg-warning',
-                  'BATAL' => 'text-bg-danger',
-                  default => 'text-bg-secondary'
+                  'BATAL'   => 'text-bg-danger',
+                  default   => 'text-bg-secondary'
                 };
               @endphp
               <span class="badge {{ $payClass }}">{{ $s->status_pembayaran }}</span>
@@ -150,7 +224,6 @@
                         </select>
                         <div class="text-muted small mt-1">Jika COT dan status LUNAS → wajib upload bukti.</div>
                       </div>
-
                       <div class="col-md-4">
                         <label class="form-label fw-semibold">Status Pembayaran</label>
                         <select name="status_pembayaran" class="form-select" required>
@@ -159,20 +232,15 @@
                           @endforeach
                         </select>
                       </div>
-
                       <div class="col-md-4">
                         <label class="form-label fw-semibold">Upload Bukti (jpg/png/pdf)</label>
                         <input type="file" name="bukti_bayar" class="form-control">
                         @if($s->bukti_bayar_path)
-                          <div class="text-muted small mt-1">
-                            Saat ini: {{ basename($s->bukti_bayar_path) }}
-                          </div>
+                          <div class="text-muted small mt-1">Saat ini: {{ basename($s->bukti_bayar_path) }}</div>
                         @endif
                       </div>
                     </div>
-
                     <hr>
-
                     <div class="row g-2">
                       <div class="col-md-6">
                         <div class="text-muted small">Penerima</div>
@@ -187,7 +255,6 @@
                         <div class="fw-semibold">Rp {{ number_format($s->harga_total,0,',','.') }}</div>
                       </div>
                     </div>
-
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
@@ -206,18 +273,45 @@
         </tbody>
       </table>
     </div>
-
   </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', ()=>{
-  const all = document.getElementById('checkAll');
-  if(all){
-    all.addEventListener('change', ()=>{
-      document.querySelectorAll('.ck').forEach(x => x.checked = all.checked);
+function csrf() {
+  return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+
+function konfirmasiSelesai() {
+  new bootstrap.Modal(document.getElementById('modalSelesai')).show();
+}
+
+async function updateStatusManifest(status) {
+  const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelesai'));
+  if (modal) modal.hide();
+
+  try {
+    const res = await fetch('{{ route("manifests.updateStatus", $manifest) }}', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': csrf(),
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ status }),
     });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      alert('Gagal update status: ' + (data.message ?? 'Unknown error'));
+      return;
+    }
+
+    window.location.reload();
+
+  } catch (e) {
+    alert('Gagal menghubungi server: ' + e.message);
   }
-});
+}
 </script>
 @endsection
