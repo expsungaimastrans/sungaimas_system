@@ -296,16 +296,18 @@ public function exportCsv(Request $request)
         return view('shipments.success', compact('shipment', 'waPengirim', 'waPenerima', 'canWaPenerima', 'canWaPengirim'));
     }
 
-    public function pdf($id)
+    public function pdfHalf($id)
     {
         $shipment = Shipment::with('items')->findOrFail($id);
 
+        $halfPaper = [0, 0, 684, 396];
+
         $pdf = Pdf::loadView('shipments.pdf', compact('shipment'))
-            ->setPaper('A4', 'portrait');
+            ->setPaper($halfPaper, 'portrait');
 
         $fileNo = str_replace(['/', '\\'], '-', (string)$shipment->no_nota);
 
-        return $pdf->stream('nota-' . $fileNo . '.pdf');
+        return $pdf->stream('nota-half-' . $fileNo . '.pdf');
     }
 
     /**

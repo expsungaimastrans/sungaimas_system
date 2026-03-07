@@ -48,77 +48,6 @@
   </div>
 </div>
 
-{{-- STATUS PENGIRIMAN MANIFEST --}}
-@php
-  $statusManifest = $manifest->status ?? 'PERSIAPAN';
-  $statusColor = match($statusManifest) {
-    'PERSIAPAN'       => 'text-bg-secondary',
-    'DALAM_PERJALANAN'=> 'text-bg-primary',
-    'SELESAI'         => 'text-bg-success',
-    default           => 'text-bg-secondary',
-  };
-  $statusLabel = match($statusManifest) {
-    'PERSIAPAN'       => '⏳ Persiapan',
-    'DALAM_PERJALANAN'=> '🚚 Dalam Perjalanan',
-    'SELESAI'         => '✅ Selesai',
-    default           => $statusManifest,
-  };
-  $canUpdateStatus = auth()->check() && in_array(auth()->user()->role, ['owner','admin'], true);
-@endphp
-
-<div class="card shadow-sm mb-3 border-2 {{ $statusManifest === 'SELESAI' ? 'border-success' : ($statusManifest === 'DALAM_PERJALANAN' ? 'border-primary' : 'border-secondary') }}">
-  <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-    <div>
-      <div class="text-muted small mb-1">Status Pengiriman Manifest</div>
-      <span class="badge fs-6 {{ $statusColor }}">{{ $statusLabel }}</span>
-      @if($statusManifest === 'SELESAI')
-        <div class="text-muted small mt-1">Semua nota dalam manifest ini otomatis ditandai <strong>SELESAI</strong>.</div>
-      @endif
-    </div>
-    @if($canUpdateStatus && $statusManifest !== 'SELESAI')
-      <div class="d-flex gap-2">
-        @if($statusManifest === 'PERSIAPAN')
-          <button class="btn btn-primary" onclick="updateStatusManifest('DALAM_PERJALANAN')">
-            🚚 Berangkat
-          </button>
-        @endif
-        @if($statusManifest === 'DALAM_PERJALANAN')
-          <button class="btn btn-outline-primary" onclick="updateStatusManifest('PERSIAPAN')">
-            ← Kembali ke Persiapan
-          </button>
-          <button class="btn btn-success" onclick="konfirmasiSelesai()">
-            ✅ Selesai
-          </button>
-        @endif
-      </div>
-    @elseif($canUpdateStatus && $statusManifest === 'SELESAI')
-      <button class="btn btn-outline-secondary btn-sm" onclick="updateStatusManifest('DALAM_PERJALANAN')">
-        ↩ Batalkan Selesai
-      </button>
-    @endif
-  </div>
-</div>
-
-{{-- Modal konfirmasi selesai --}}
-<div class="modal fade" id="modalSelesai" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Konfirmasi Selesai</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p>Tandai manifest <strong>{{ $manifest->no_manifest }}</strong> sebagai <strong>SELESAI</strong>?</p>
-        <p class="text-muted small">Semua <strong>{{ $total }} nota</strong> dalam manifest ini akan otomatis diubah status pengirimannya menjadi <strong>SELESAI</strong>.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-success" onclick="updateStatusManifest('SELESAI')">✅ Ya, Selesai</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 {{-- FORM TAGIHAN (gabungan nota) --}}
 
 {{-- LIST FINANCE UPDATE --}}
@@ -134,6 +63,7 @@
         <thead>
           <tr class="text-center">
             <th style="width:140px;">No Nota</th>
+            <th style="min-width:160px;max-width:200px;">Detail Barang</th>
             <th>Penerima</th>
             <th style="width:130px;">Tujuan</th>
             <th style="width:120px;">Total</th>
@@ -147,6 +77,15 @@
         @forelse($shipments as $s)
           <tr>
             <td class="text-center fw-bold">{{ $s->no_nota }}</td>
+            <td style="min-width:160px;max-width:200px;">
+              @foreach($s->items as $it)
+                <div class="small lh-sm mb-1">
+                  <span class="fw-semibold d-block" style="word-break:break-word;">{{ $it->nama_barang }}</span>
+                  <span class="text-muted">{{ (int)$it->koli }} koli@if((float)$it->berat_kg > 0) &middot; {{ (float)$it->berat_kg }} kg@endif</span>
+                </div>
+              @endforeach
+              @if($s->items->isEmpty())<span class="text-muted small">-</span>@endif
+            </td>
             <td>{{ $s->nama_penerima }}</td>
             <td class="text-center">{{ $s->tujuan }}</td>
             <td class="text-end">Rp {{ number_format($s->harga_total,0,',','.') }}</td>
@@ -261,7 +200,7 @@
 
         @empty
           <tr>
-            <td colspan="8" class="text-center text-muted py-4">Belum ada nota.</td>
+            <td colspan="9" class="text-center text-muted py-4">Belum ada nota.</td>
           </tr>
         @endforelse
         </tbody>
@@ -280,45 +219,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 });
-</script>
-<script>
-function csrf() {
-  return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-}
-
-function konfirmasiSelesai() {
-  new bootstrap.Modal(document.getElementById('modalSelesai')).show();
-}
-
-async function updateStatusManifest(status) {
-  // tutup modal jika terbuka
-  const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelesai'));
-  if (modal) modal.hide();
-
-  try {
-    const res = await fetch('{{ route("manifests.updateStatus", $manifest) }}', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': csrf(),
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.ok) {
-      alert('Gagal update status: ' + (data.message ?? 'Unknown error'));
-      return;
-    }
-
-    // Reload halaman agar badge dan tombol ikut berubah
-    window.location.reload();
-
-  } catch (e) {
-    alert('Gagal menghubungi server: ' + e.message);
-  }
-}
 </script>
 @endsection
