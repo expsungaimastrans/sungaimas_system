@@ -538,6 +538,96 @@ public function exportCsv(Request $request)
         return "https://wa.me/{$phone}?text=" . urlencode($msg);
     }
 
+    /**
+     * EXPORT MUAT CSV — urut tujuan, spasi antar kota, kolom ringkas
+     */
+    public function exportMuat(Request $request)
+    {
+        $jalurOrder = [
+            'labuan bajo' => 1, 'labuanbajo' => 1,
+            'lembor'      => 2,
+            'ruteng'      => 3,
+            'borong'      => 4,
+            'aimere'      => 5, 'aimire' => 5,
+            'cancar'      => 6,
+            'bajawa'      => 7,
+            'soa'         => 8,
+            'bowae'       => 9,
+            'mbay'        => 10, 'nagekeo' => 10,
+            'mataloko'    => 11,
+            'ende'        => 12,
+            'riung'       => 13,
+            'raja'        => 14,
+        ];
+
+        $rows = Shipment::query()
+            ->where('status_pengiriman', 'DITERIMA')
+            ->with('items')
+            ->get();
+
+        // Urutkan berdasarkan jalurOrder
+        $sorted = $rows->sortBy(function ($s) use ($jalurOrder) {
+            $tujuan = strtolower(trim($s->tujuan ?? ''));
+            $order  = 99;
+            foreach ($jalurOrder as $key => $val) {
+                if (str_contains($tujuan, $key)) { $order = $val; break; }
+            }
+            return sprintf('%02d_%s', $order, $tujuan);
+        })->values();
+
+        $filename = 'daftar-muat-' . now()->format('Ymd-His') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($sorted) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM UTF-8
+
+            fputcsv($out, ['Tanggal','No Nota','Detail Barang','Koli','KG','Penerima','Tujuan','Harga']);
+
+            $prevTujuan = null;
+
+            foreach ($sorted as $s) {
+                $tujuan = $s->tujuan ?? '-';
+
+                // Baris kosong pemisah antar kota
+                if ($prevTujuan !== null && strtolower($tujuan) !== strtolower($prevTujuan)) {
+                    fputcsv($out, ['', '', '', '', '', '', '', '']);
+                }
+                $prevTujuan = $tujuan;
+
+                $detailBarang = $s->items->map(function ($it) {
+                    $parts = [$it->nama_barang];
+                    if ((float)($it->koli ?? 0) > 0)     $parts[] = (float)$it->koli . ' koli';
+                    if ((float)($it->berat_kg ?? 0) > 0)  $parts[] = (float)$it->berat_kg . ' kg';
+                    return implode(' ', $parts);
+                })->implode("
+");
+
+                $totalKoli = $s->items->sum(fn($it) => (float)($it->koli ?? 0));
+                $totalKg   = $s->items->sum(fn($it) => (float)($it->berat_kg ?? 0));
+
+                fputcsv($out, [
+                    optional($s->created_at)->format('d/m/Y'),
+                    $s->no_nota,
+                    $detailBarang,
+                    $totalKoli,
+                    $totalKg,
+                    $s->nama_penerima,
+                    $tujuan,
+                    (float)$s->harga_total,
+                ]);
+            }
+
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+
     private function normalizePhone(?string $phone): ?string
     {
         if (!$phone) return null;

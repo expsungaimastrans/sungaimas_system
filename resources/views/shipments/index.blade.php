@@ -66,7 +66,7 @@
           <label class="form-label fw-semibold mb-1">Pengiriman</label>
           <select name="status_pengiriman" class="form-select">
             <option value="">Semua</option>
-            @foreach(['DITERIMA','DALAM_PENGIRIMAN','SELESAI'] as $x)
+            @foreach(['DITERIMA','DALAM_PENGIRIMAN'] as $x)
               <option value="{{ $x }}" {{ $f_sk===$x ? 'selected' : '' }}>{{ $x }}</option>
             @endforeach
           </select>
@@ -91,6 +91,10 @@
             <a href="{{ route('shipments.export.csv', request()->query()) }}"
                class="btn btn-outline-success">
               Export CSV
+            </a>
+            <a href="{{ route('shipments.export.muat') }}"
+               class="btn btn-outline-primary">
+              📦 Daftar Muat
             </a>
           
             <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
@@ -180,14 +184,7 @@
 
             {{-- PENGIRIMAN (read-only, otomatis dari manifest) --}}
             <td class="text-center">
-              @php
-                $kirimClass = match($s->status_pengiriman) {
-                  'DALAM_PENGIRIMAN' => 'text-bg-primary',
-                  'SELESAI'          => 'text-bg-success',
-                  default            => 'text-bg-secondary',
-                };
-              @endphp
-              <span class="badge {{ $kirimClass }}">
+              <span class="badge {{ $s->status_pengiriman === 'DALAM_PENGIRIMAN' ? 'text-bg-primary' : 'text-bg-secondary' }}">
                 {{ $s->status_pengiriman }}
               </span>
               @if($s->manifest_id)

@@ -70,6 +70,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/shipments/export/csv', [ShipmentController::class, 'exportCsv'])
         ->middleware('role:owner,finance')
         ->name('shipments.export.csv');
+    Route::get('/shipments/export/muat', [ShipmentController::class, 'exportMuat'])
+        ->middleware('role:owner,admin,finance')
+        ->name('shipments.export.muat');
 
 
     // Kirim nota PDF via WhatsApp
