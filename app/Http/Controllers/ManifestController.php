@@ -236,6 +236,61 @@ class ManifestController extends Controller
         return redirect("/manifests/{$id}/edit");
     }
 
+
+    // =========================
+    // UPDATE STATUS MANIFEST
+    // =========================
+    public function updateStatus(Request $request, Manifest $manifest)
+    {
+        $request->validate([
+            'status' => 'required|in:PERSIAPAN,DALAM_PERJALANAN,SELESAI',
+        ]);
+
+        $oldStatus = $manifest->status ?? 'PERSIAPAN';
+        $newStatus = $request->status;
+
+        return DB::transaction(function () use ($manifest, $oldStatus, $newStatus) {
+
+            $manifest->status = $newStatus;
+            $manifest->save();
+
+            if ($newStatus === 'SELESAI') {
+                $ids = ManifestItem::where('manifest_id', $manifest->id)
+                    ->whereNotNull('shipment_id')
+                    ->pluck('shipment_id');
+
+                Shipment::whereIn('id', $ids)->update([
+                    'status_pengiriman' => 'SELESAI',
+                ]);
+
+                foreach ($ids as $sid) {
+                    $s = Shipment::find($sid);
+                    if ($s) {
+                        $this->logShipment($s, 'SELESAI', "Pengiriman selesai via manifest {$manifest->no_manifest}", [
+                            'manifest_id' => $manifest->id,
+                            'no_manifest' => $manifest->no_manifest,
+                        ]);
+                    }
+                }
+            }
+
+            if ($oldStatus === 'SELESAI' && $newStatus !== 'SELESAI') {
+                $ids = ManifestItem::where('manifest_id', $manifest->id)
+                    ->whereNotNull('shipment_id')
+                    ->pluck('shipment_id');
+
+                Shipment::whereIn('id', $ids)
+                    ->where('status_pengiriman', 'SELESAI')
+                    ->update(['status_pengiriman' => 'DALAM_PENGIRIMAN']);
+            }
+
+            return response()->json([
+                'ok'     => true,
+                'status' => $manifest->status,
+            ]);
+        });
+    }
+
     // ===== logging helper =====
     private function logShipment(Shipment $shipment, string $action, ?string $desc = null, array $meta = []): void
     {
