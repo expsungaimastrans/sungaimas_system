@@ -41,6 +41,11 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        // Support JSON request (dari AJAX modal)
+        if ($request->isJson()) {
+            $request->merge($request->json()->all());
+        }
+
         $data = $request->validate([
             'nama'     => 'required|string|max:255',
             'tipe'     => 'required|in:PENGIRIM,PENERIMA',
@@ -239,6 +244,10 @@ class CustomerController extends Controller
     // =====================
     public function exportCsv(Request $request)
     {
+        if (auth()->user()?->role !== 'owner') {
+            abort(403, 'Hanya owner yang dapat export data customer.');
+        }
+
         $tipe = trim((string) $request->query('tipe', ''));
 
         $customers = Customer::query()

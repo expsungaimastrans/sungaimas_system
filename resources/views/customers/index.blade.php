@@ -13,7 +13,9 @@
   <div class="page-title h4 mb-0">Data Customer</div>
   <div class="d-flex gap-2 flex-wrap mt-2 mt-md-0">
     <a href="{{ route('customers.import.form') }}" class="btn btn-outline-secondary">📥 Import CSV</a>
+    @if(auth()->user()->role === 'owner')
     <a href="{{ route('customers.export.csv', request()->only('tipe')) }}" class="btn btn-outline-success">📤 Export CSV</a>
+    @endif
     <a href="{{ route('customers.create') }}" class="btn btn-brand">+ Tambah Customer</a>
   </div>
 </div>
