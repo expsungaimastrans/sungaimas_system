@@ -92,10 +92,6 @@
                class="btn btn-outline-success">
               Export CSV
             </a>
-            <a href="{{ route('shipments.export.muat') }}"
-               class="btn btn-outline-primary">
-              📦 Daftar Muat
-            </a>
           
             <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
           </div>
@@ -188,7 +184,7 @@
                 {{ $s->status_pengiriman }}
               </span>
               @if($s->manifest_id)
-                <div class="text-muted small mt-1">Manifest: #{{ $s->manifest_id }}</div>
+                <div class="text-muted small mt-1">Manifest: #{{ optional($s->manifest)->manifest_ke ?? $s->manifest_id }}</div>
               @endif
             </td>
 

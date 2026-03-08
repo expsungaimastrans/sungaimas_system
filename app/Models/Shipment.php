@@ -38,11 +38,11 @@ class Shipment extends Model
 }
 
 public function manifest()
-{
-    return $this->belongsTo(\App\Models\Manifest::class, 'manifest_id');
-}
+    {
+        return $this->belongsTo(\App\Models\Manifest::class, 'manifest_id');
+    }
 
-public function manifestItem()
+    public function manifestItem()
 {
     return $this->hasOne(\App\Models\ManifestItem::class);
 }
