@@ -94,10 +94,10 @@
         <div class="mt-4">
           <div class="fw-semibold">INFORMASI OPERASIONAL</div>
           <div class="hint mt-2">
-            • <b>Pastikan data pengirim dan penerima diinput dengan benar.<br>
-            • <b>Periksa kembali jumlah barang sebelum membuat nota.<br>
-            • <b>Setelah nota terbuat WAJIB Mengirim Whatsapp ke Penerima<br>
-            • <b>Lakukan pengecekan data sebelum barang diberangkatkan.<br>
+            • Pastikan data pengirim dan penerima diinput dengan benar.<br>
+            • Periksa kembali jumlah barang sebelum membuat nota.<br>
+            • Setelah nota terbuat WAJIB Mengirim Whatsapp ke Penerima<br>
+            • Lakukan pengecekan data sebelum barang diberangkatkan.<br>
           </div>
         </div>
 
