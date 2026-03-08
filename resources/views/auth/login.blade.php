@@ -92,11 +92,12 @@
         </div>
 
         <div class="mt-4">
-          <div class="fw-semibold">Akses Role</div>
+          <div class="fw-semibold">INFORMASI OPERASIONAL</div>
           <div class="hint mt-2">
-            • <b>Owner</b>: Dashboard + semua fitur<br>
-            • <b>Admin</b>: Buat nota & manifest (tanpa finance)<br>
-            • <b>Finance</b>: Finance saja (tanpa buat nota/manifest)<br>
+            • <b>Pastikan data pengirim dan penerima diinput dengan benar.<br>
+            • <b>Periksa kembali jumlah barang sebelum membuat nota.<br>
+            • <b>Setelah nota terbuat WAJIB Mengirim Whatsapp ke Penerima<br>
+            • <b>Lakukan pengecekan data sebelum barang diberangkatkan.<br>
           </div>
         </div>
 
