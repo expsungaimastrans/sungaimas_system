@@ -58,4 +58,15 @@ public function invoiceItems()
 }
 
 
+    public function customerPenerima()
+    {
+        return $this->belongsTo(\App\Models\Customer::class, 'nama_penerima', 'nama')
+                    ->where('tipe', 'PENERIMA');
+    }
+
+    public function customerPengirim()
+    {
+        return $this->belongsTo(\App\Models\Customer::class, 'nama_pengirim', 'nama')
+                    ->where('tipe', 'PENGIRIM');
+    }
 }

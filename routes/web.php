@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ShipmentController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\WhatsappController;
@@ -169,3 +170,23 @@ Route::middleware('role:owner,admin,finance')->group(function () {
     });
 
 });
+
+// =====================
+// CUSTOMER ROUTES
+// =====================
+Route::middleware(['auth', 'role:owner,admin'])->prefix('customers')->group(function () {
+    Route::get('/',                [CustomerController::class, 'index'])->name('customers.index');
+    Route::get('/create',          [CustomerController::class, 'create'])->name('customers.create');
+    Route::post('/',               [CustomerController::class, 'store'])->name('customers.store');
+    Route::get('/{customer}',      [CustomerController::class, 'show'])->name('customers.show');
+    Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
+    Route::put('/{customer}',      [CustomerController::class, 'update'])->name('customers.update');
+    Route::delete('/{customer}',   [CustomerController::class, 'destroy'])->name('customers.destroy');
+    Route::get('/import/form',     [CustomerController::class, 'importForm'])->name('customers.import.form');
+    Route::post('/import',         [CustomerController::class, 'import'])->name('customers.import');
+    Route::get('/export/csv',      [CustomerController::class, 'exportCsv'])->name('customers.export.csv');
+});
+
+// API customer search (untuk autocomplete, semua role yg login)
+Route::middleware(['auth'])->get('/api/customers/search', [CustomerController::class, 'apiSearch'])
+    ->name('customers.api.search');
