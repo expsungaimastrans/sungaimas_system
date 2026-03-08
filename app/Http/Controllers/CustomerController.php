@@ -60,13 +60,20 @@ class CustomerController extends Controller
                           ->where('tipe', $data['tipe'])
                           ->exists();
         if ($exists) {
-            return back()->withInput()->with('error', "Customer \"{$data['nama']}\" ({$data['tipe']}) sudah ada.");
+            if ($request->expectsJson()) {
+                return response()->json(['message' => "Customer sudah ada."], 422);
+            }
+            return back()->withInput()->with('error', "Customer sudah ada.");
         }
 
-        Customer::create($data);
+        $customer = Customer::create($data);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'customer' => $customer]);
+        }
 
         return redirect()->route('customers.index')
-                         ->with('success', "Customer \"{$data['nama']}\" berhasil ditambahkan.");
+                         ->with('success', "Customer berhasil ditambahkan.");
     }
 
     // =====================
