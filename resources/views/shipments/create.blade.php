@@ -42,6 +42,32 @@
         font-size:18px;
         line-height: 1;
     }
+
+    /* Autocomplete */
+    .ac-wrapper { position: relative; }
+    .ac-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        max-height: 220px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    }
+    .ac-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.875rem;
+    }
+    .ac-item:hover, .ac-item.active { background: #f0f7ff; }
+    .ac-item .ac-nama { font-weight: 600; }
+    .ac-item .ac-meta { color: #6c757d; font-size: 0.78rem; }
 </style>
 @endpush
 
@@ -67,11 +93,14 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-7">
                     <label class="form-label fw-semibold">Nama Pengirim / Toko</label>
-                    <input type="text" name="nama_pengirim" class="form-control" required>
+                    <div class="ac-wrapper">
+                        <input type="text" id="nama_pengirim" name="nama_pengirim" class="form-control" required autocomplete="off">
+                        <div id="ac-pengirim" class="ac-dropdown" style="display:none;"></div>
+                    </div>
                 </div>
                 <div class="col-md-5">
                     <label class="form-label fw-semibold">No Telp Pengirim</label>
-                    <input type="text" name="telp_pengirim" class="form-control">
+                    <input type="text" id="telp_pengirim" name="telp_pengirim" class="form-control">
                 </div>
             </div>
 
@@ -80,11 +109,14 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Nama Penerima</label>
-                    <input type="text" name="nama_penerima" class="form-control" required>
+                    <div class="ac-wrapper">
+                        <input type="text" id="nama_penerima" name="nama_penerima" class="form-control" required autocomplete="off">
+                        <div id="ac-penerima" class="ac-dropdown" style="display:none;"></div>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">No Telp Penerima</label>
-                    <input type="text" name="telp_penerima" class="form-control" required>
+                    <input type="text" id="telp_penerima" name="telp_penerima" class="form-control" required>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Tujuan Pengiriman</label>
@@ -103,7 +135,6 @@
                         <option>Ende</option>
                         <option value="lainnya">Lainnya...</option>
                     </select>
-
                     <input type="text" name="tujuan" id="tujuan_input"
                            class="form-control mt-2 d-none"
                            placeholder="Masukkan tujuan lain">
@@ -111,7 +142,7 @@
 
                 <div class="col-12">
                     <label class="form-label fw-semibold">Alamat Penerima</label>
-                    <textarea name="alamat_penerima" class="form-control" rows="2" required></textarea>
+                    <textarea id="alamat_penerima" name="alamat_penerima" class="form-control" rows="2" required></textarea>
                 </div>
             </div>
 
@@ -136,17 +167,12 @@
                                 <th style="width:40px;">#</th>
                             </tr>
                         </thead>
-
                         <tbody>
                             <tr class="item-row">
                                 <td><input type="text" name="barang[0][nama]" class="form-control" required></td>
-
                                 <td><input type="number" name="barang[0][koli]" class="form-control koli text-center" min="0" step="1" value="0"></td>
-
                                 <td><input type="number" name="barang[0][berat_kg]" class="form-control berat text-center" min="0" step="0.01" value="0"></td>
-
                                 <td><input type="number" name="barang[0][kubikasi_m3]" class="form-control kubik text-center" min="0" step="0.001" value="0" disabled></td>
-
                                 <td>
                                     <select name="barang[0][satuan_tarif]" class="form-select satuanTarif">
                                         <option value="unit">Unit</option>
@@ -154,11 +180,8 @@
                                         <option value="kubik">Kubik</option>
                                     </select>
                                 </td>
-
                                 <td><input type="number" name="barang[0][harga]" class="form-control harga text-end" min="0" step="1" value="0"></td>
-
                                 <td><input type="number" class="form-control subtotal text-end" readonly></td>
-
                                 <td class="text-center"><span class="remove-btn" onclick="removeRow(this)">✖</span></td>
                             </tr>
                         </tbody>
@@ -191,10 +214,10 @@
 
 @push('scripts')
 <script>
+// ============ TUJUAN TOGGLE ============
 function toggleTujuan() {
     const select = document.getElementById('tujuan_select');
     const input  = document.getElementById('tujuan_input');
-
     if (select.value === 'lainnya') {
         input.classList.remove('d-none');
         input.required = true;
@@ -206,19 +229,122 @@ function toggleTujuan() {
     }
 }
 
+// ============ AUTOCOMPLETE ============
+function initAC(inputId, dropdownId, tipe, onSelect) {
+    const input    = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    if (!input || !dropdown) return;
+
+    let timer = null;
+    let results = [];
+    let activeIdx = -1;
+
+    input.addEventListener('input', () => {
+        clearTimeout(timer);
+        const q = input.value.trim();
+        if (q.length < 1) { dropdown.style.display = 'none'; return; }
+        timer = setTimeout(async () => {
+            try {
+                const res  = await fetch(`/api/customers/search?q=${encodeURIComponent(q)}&tipe=${tipe}`);
+                results    = await res.json();
+                activeIdx  = -1;
+                render(results);
+            } catch(e) { dropdown.style.display = 'none'; }
+        }, 200);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const items = dropdown.querySelectorAll('.ac-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIdx = Math.min(activeIdx + 1, items.length - 1);
+            items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIdx = Math.max(activeIdx - 1, 0);
+            items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        } else if (e.key === 'Enter' && activeIdx >= 0) {
+            e.preventDefault();
+            if (results[activeIdx]) pick(results[activeIdx]);
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target))
+            dropdown.style.display = 'none';
+    });
+
+    function render(list) {
+        dropdown.innerHTML = '';
+        if (!list.length) {
+            dropdown.innerHTML = '<div class="ac-item text-muted">Tidak ditemukan</div>';
+            dropdown.style.display = 'block';
+            return;
+        }
+        list.forEach((c, i) => {
+            const div = document.createElement('div');
+            div.className = 'ac-item';
+            div.innerHTML = `<div class="ac-nama">${esc(c.nama)}</div>
+                <div class="ac-meta">${c.no_telp ? '📞 ' + esc(c.no_telp) : ''}${c.tujuan ? ' · 📍 ' + esc(c.tujuan) : ''}</div>`;
+            div.addEventListener('mousedown', (e) => { e.preventDefault(); pick(c); });
+            dropdown.appendChild(div);
+        });
+        dropdown.style.display = 'block';
+    }
+
+    function pick(c) {
+        input.value = c.nama;
+        dropdown.style.display = 'none';
+        if (onSelect) onSelect(c);
+    }
+
+    function esc(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     toggleTujuan();
     recalcAll();
+
+    // Autocomplete Pengirim
+    initAC('nama_pengirim', 'ac-pengirim', 'PENGIRIM', (c) => {
+        if (c.no_telp) document.getElementById('telp_pengirim').value = c.no_telp;
+    });
+
+    // Autocomplete Penerima — juga isi telp & tujuan
+    initAC('nama_penerima', 'ac-penerima', 'PENERIMA', (c) => {
+        if (c.no_telp)  document.getElementById('telp_penerima').value = c.no_telp;
+        if (c.tujuan) {
+            // Coba cocokkan dengan option dropdown
+            const sel = document.getElementById('tujuan_select');
+            let matched = false;
+            for (let opt of sel.options) {
+                if (opt.value.toLowerCase() === c.tujuan.toLowerCase()) {
+                    sel.value = opt.value;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                sel.value = 'lainnya';
+                document.getElementById('tujuan_input').value = c.tujuan;
+            }
+            toggleTujuan();
+        }
+        if (c.alamat) document.getElementById('alamat_penerima').value = c.alamat;
+    });
 });
 
+// ============ BARANG ============
 let index = 1;
 
 function addRow(){
     const tbody = document.querySelector('#barangTable tbody');
-
     const tr = document.createElement('tr');
     tr.classList.add('item-row');
-
     tr.innerHTML = `
         <td><input type="text" name="barang[${index}][nama]" class="form-control" required></td>
         <td><input type="number" name="barang[${index}][koli]" class="form-control koli text-center" min="0" step="1" value="0"></td>
@@ -246,22 +372,17 @@ function removeRow(el){
     recalcAll();
 }
 
-// ============== HITUNG OTOMATIS ==============
 function recalcRow(row){
-    const koli   = parseFloat(row.querySelector('.koli')?.value || 0);
-    const berat  = parseFloat(row.querySelector('.berat')?.value || 0);
-    const kubik  = parseFloat(row.querySelector('.kubik')?.value || 0);
-    const tarif  = row.querySelector('.satuanTarif')?.value || 'unit';
-    const harga  = parseFloat(row.querySelector('.harga')?.value || 0);
-
+    const koli  = parseFloat(row.querySelector('.koli')?.value || 0);
+    const berat = parseFloat(row.querySelector('.berat')?.value || 0);
+    const kubik = parseFloat(row.querySelector('.kubik')?.value || 0);
+    const tarif = row.querySelector('.satuanTarif')?.value || 'unit';
+    const harga = parseFloat(row.querySelector('.harga')?.value || 0);
     let qty = koli;
     if(tarif === 'kg') qty = berat;
     if(tarif === 'kubik') qty = kubik;
-
     row.querySelector('.kubik').disabled = (tarif !== 'kubik');
-
-    const subtotal = qty * harga;
-    row.querySelector('.subtotal').value = subtotal;
+    row.querySelector('.subtotal').value = qty * harga;
 }
 
 function recalcAll(){
