@@ -92,6 +92,10 @@
                class="btn btn-outline-success">
               Export CSV
             </a>
+            <a href="{{ route('shipments.export.muat') }}"
+               class="btn btn-outline-primary">
+              📦 Daftar Muat
+            </a>
           
             <a href="{{ route('shipments.index') }}" class="btn btn-outline-secondary">Reset</a>
           </div>
