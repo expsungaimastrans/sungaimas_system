@@ -31,6 +31,15 @@
     .btn-simpan-nota{ transform: scale(0.85); transform-origin: center; }
     .remove-btn{ cursor:pointer; color:#dc3545; font-size:18px; line-height: 1; }
 
+    /* Penerima search - readonly look dengan kursor pointer */
+    .penerima-search-input {
+        background-color: #fff !important;
+        cursor: text;
+    }
+    .penerima-search-input:not([readonly]) {
+        border-color: #86b7fe;
+    }
+
     /* Autocomplete */
     .ac-wrapper { position: relative; }
     .ac-dropdown {
@@ -59,6 +68,7 @@
 
     /* Lock state */
     .field-locked { background: #f8f9fa !important; color: #495057; }
+    .select-locked { background: #f8f9fa !important; color: #6c757d !important; pointer-events: none; }
     .lock-badge {
         display: inline-flex; align-items: center; gap: 6px;
         background: #e8f5e9; color: #2e7d32;
@@ -94,6 +104,7 @@
     <div class="card-body content-card-body">
         <form method="POST" action="/shipments">
             @csrf
+            {{-- Token verifikasi penerima dari customer database --}}
 
             <!-- ===================== PENGIRIM ===================== -->
             <div class="section-title">Data Pengirim</div>
@@ -122,8 +133,14 @@
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Nama Penerima</label>
                     <div class="ac-wrapper">
-                        <input type="text" id="nama_penerima" name="nama_penerima" class="form-control" required autocomplete="off">
+                        <input type="text" id="nama_penerima" name="nama_penerima"
+                               class="form-control penerima-search-input"
+                               required autocomplete="off"
+                               placeholder="Ketik untuk mencari atau tambah customer...">
                         <div id="ac-penerima" class="ac-dropdown" style="display:none;"></div>
+                    </div>
+                    <div class="text-muted small mt-1" id="hint-cari-penerima">
+                        🔍 Ketik nama penerima untuk mencari dari data customer
                     </div>
                     <div id="lock-penerima" class="mt-1" style="display:none;">
                         <span class="lock-badge">✓ Tersimpan di database
@@ -133,7 +150,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">No Telp Penerima</label>
-                    <input type="text" id="telp_penerima" name="telp_penerima" class="form-control" required>
+                    <input type="text" id="telp_penerima" name="telp_penerima" class="form-control field-locked" required readonly tabindex="-1">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Tujuan Pengiriman</label>
@@ -159,7 +176,7 @@
 
                 <div class="col-12">
                     <label class="form-label fw-semibold">Alamat Penerima</label>
-                    <textarea id="alamat_penerima" name="alamat_penerima" class="form-control" rows="2" required></textarea>
+                    <textarea id="alamat_penerima" name="alamat_penerima" class="form-control field-locked" rows="2" required readonly tabindex="-1"></textarea>
                 </div>
             </div>
 
@@ -219,9 +236,10 @@
             </div>
 
             <div class="d-flex justify-content-center mt-4">
-                <button type="submit" class="btn btn-brand w-100 btn-simpan-nota" style="max-width:520px;">
+                <button type="submit" id="btn-simpan" class="btn btn-brand w-100 btn-simpan-nota" style="max-width:520px;" disabled>
                     💾 Simpan Nota
                 </button>
+                <div id="hint-penerima" class="text-danger small mt-2 text-center" style="display:none;">⚠️ Nama penerima harus dipilih atau ditambahkan dari data customer</div>
             </div>
         </form>
     </div>
@@ -293,43 +311,81 @@ function toggleTujuan() {
 // ============ LOCK / UNLOCK ============
 const lockedFields = { pengirim: false, penerima: false };
 
+function setSubmitState() {
+    const verified = lockedFields['penerima'];
+    const btn      = document.getElementById('btn-simpan');
+    const hint     = document.getElementById('hint-penerima');
+    const hintCari = document.getElementById('hint-cari-penerima');
+    btn.disabled   = !verified;
+    if (hint)     hint.style.display     = verified ? 'none' : 'block';
+    if (hintCari) hintCari.style.display = verified ? 'none' : 'block';
+}
+
+function enablePenerimaFields() {
+    const telp = document.getElementById('telp_penerima');
+    const sel  = document.getElementById('tujuan_select');
+    const almt = document.getElementById('alamat_penerima');
+    telp.readOnly = false; telp.classList.remove('field-locked');
+    sel.classList.remove('select-locked');
+    almt.readOnly = false; almt.classList.remove('field-locked');
+}
+
+function disablePenerimaFields() {
+    const telp = document.getElementById('telp_penerima');
+    const sel  = document.getElementById('tujuan_select');
+    const almt = document.getElementById('alamat_penerima');
+    // readOnly bukan disabled agar value tetap tersubmit
+    telp.readOnly = true;  telp.classList.add('field-locked'); telp.value = '';
+    sel.classList.add('select-locked'); sel.value = '';
+    almt.readOnly = true;  almt.classList.add('field-locked'); almt.value = '';
+    document.getElementById('tujuan_input').value = '';
+    toggleTujuan();
+}
+
 function lockField(type) {
     lockedFields[type] = true;
     const nameInput = document.getElementById('nama_' + type);
-    const telpInput = document.getElementById('telp_' + type);
     nameInput.readOnly = true;
     nameInput.classList.add('field-locked');
-    if (telpInput) { telpInput.readOnly = true; telpInput.classList.add('field-locked'); }
+
+    if (type === 'pengirim') {
+        const telp = document.getElementById('telp_pengirim');
+        if (telp) { telp.readOnly = true; telp.classList.add('field-locked'); }
+    }
     if (type === 'penerima') {
-        const sel = document.getElementById('tujuan_select');
-        // Tujuan tetap bisa diubah kalau "Lainnya" dipilih
-        document.getElementById('alamat_penerima').readOnly = true;
-        document.getElementById('alamat_penerima').classList.add('field-locked');
+        // Setelah pilih dari customer: field diisi otomatis dan dikunci
+        const telp = document.getElementById('telp_penerima');
+        const sel  = document.getElementById('tujuan_select');
+        const almt = document.getElementById('alamat_penerima');
+        telp.readOnly = true; telp.classList.add('field-locked');
+        sel.classList.add('select-locked');
+        almt.readOnly = true; almt.classList.add('field-locked');
     }
     document.getElementById('lock-' + type).style.display = 'block';
+    if (type === 'penerima') setSubmitState();
 }
 
 function unlockField(type) {
     lockedFields[type] = false;
     const nameInput = document.getElementById('nama_' + type);
-    const telpInput = document.getElementById('telp_' + type);
     nameInput.readOnly = false;
     nameInput.classList.remove('field-locked');
     nameInput.value = '';
     nameInput.focus();
-    if (telpInput) { telpInput.readOnly = false; telpInput.classList.remove('field-locked'); telpInput.value = ''; }
+
+    if (type === 'pengirim') {
+        const telp = document.getElementById('telp_pengirim');
+        if (telp) { telp.readOnly = false; telp.classList.remove('field-locked'); telp.value = ''; }
+    }
     if (type === 'penerima') {
-        document.getElementById('tujuan_select').value = '';
-        document.getElementById('tujuan_input').value = '';
-        toggleTujuan();
-        document.getElementById('alamat_penerima').readOnly = false;
-        document.getElementById('alamat_penerima').classList.remove('field-locked');
-        document.getElementById('alamat_penerima').value = '';
+        disablePenerimaFields();
+        setSubmitState();
     }
     document.getElementById('lock-' + type).style.display = 'none';
 }
 
 // ============ AUTOCOMPLETE ============
+// searchOnly=true  → input tidak bisa diketik bebas, hanya pilih dari dropdown / modal
 function initAC(inputId, dropdownId, tipe, onSelect) {
     const input    = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
@@ -340,6 +396,7 @@ function initAC(inputId, dropdownId, tipe, onSelect) {
     let activeIdx = -1;
     const fieldType = tipe === 'PENGIRIM' ? 'pengirim' : 'penerima';
 
+    // Jika searchOnly, intercept paste agar tidak bisa paste bebas
     input.addEventListener('input', () => {
         if (input.readOnly) return;
         clearTimeout(timer);
@@ -350,7 +407,7 @@ function initAC(inputId, dropdownId, tipe, onSelect) {
                 const res = await fetch(`/api/customers/search?q=${encodeURIComponent(q)}&tipe=${tipe}`);
                 results   = await res.json();
                 activeIdx = -1;
-                render(results, q, tipe);
+                render(results, q);
             } catch(e) { dropdown.style.display = 'none'; }
         }, 200);
     });
@@ -379,21 +436,30 @@ function initAC(inputId, dropdownId, tipe, onSelect) {
             dropdown.style.display = 'none';
     });
 
-    function render(list, q, tipe) {
+    function render(list, q) {
         dropdown.innerHTML = '';
-        list.forEach((c) => {
-            const div = document.createElement('div');
-            div.className = 'ac-item';
-            div.innerHTML = `<div class="ac-nama">${esc(c.nama)}</div>
-                <div class="ac-meta">${c.no_telp ? '📞 ' + esc(c.no_telp) : ''}${c.tujuan ? ' · 📍 ' + esc(c.tujuan) : ''}</div>`;
-            div.addEventListener('mousedown', (e) => { e.preventDefault(); pick(c); });
-            dropdown.appendChild(div);
-        });
 
-        // Tombol tambah customer baru
+        if (list.length === 0) {
+            // Tidak ada hasil — hanya tampilkan opsi tambah
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'ac-item text-muted small';
+            emptyDiv.textContent = 'Tidak ditemukan di data customer';
+            dropdown.appendChild(emptyDiv);
+        } else {
+            list.forEach((c) => {
+                const div = document.createElement('div');
+                div.className = 'ac-item';
+                div.innerHTML = `<div class="ac-nama">${esc(c.nama)}</div>
+                    <div class="ac-meta">${c.no_telp ? '📞 ' + esc(c.no_telp) : ''}${c.tujuan ? ' · 📍 ' + esc(c.tujuan) : ''}</div>`;
+                div.addEventListener('mousedown', (e) => { e.preventDefault(); pick(c); });
+                dropdown.appendChild(div);
+            });
+        }
+
+        // Tombol tambah customer baru selalu muncul
         const addDiv = document.createElement('div');
         addDiv.className = 'ac-item ac-add';
-        addDiv.innerHTML = `➕ Tambah "<strong>${esc(q)}</strong>" sebagai customer baru (${tipe})`;
+        addDiv.innerHTML = `➕ Tambah "<strong>${esc(q)}</strong>" sebagai customer baru`;
         addDiv.addEventListener('mousedown', (e) => {
             e.preventDefault();
             dropdown.style.display = 'none';
@@ -472,8 +538,11 @@ async function saveNewCustomer() {
         // Tutup modal & isi form
         bootstrap.Modal.getInstance(document.getElementById('modalTambahCustomer')).hide();
 
+        // Aktifkan field dulu sebelum isi nilai
+        if (target === 'penerima') enablePenerimaFields();
+
         document.getElementById('nama_' + target).value = nama;
-        if (telp)   document.getElementById('telp_' + target).value = telp;
+        if (telp) document.getElementById('telp_' + target).value = telp;
         if (target === 'penerima') {
             if (tujuan) {
                 const sel = document.getElementById('tujuan_select');
@@ -502,13 +571,19 @@ async function saveNewCustomer() {
 document.addEventListener('DOMContentLoaded', () => {
     toggleTujuan();
     recalcAll();
+    disablePenerimaFields(); // field penerima terkunci sampai customer dipilih
+    setSubmitState();        // tombol simpan disabled di awal
 
     initAC('nama_pengirim', 'ac-pengirim', 'PENGIRIM', (c) => {
         if (c.no_telp) document.getElementById('telp_pengirim').value = c.no_telp;
     });
 
     initAC('nama_penerima', 'ac-penerima', 'PENERIMA', (c) => {
-        if (c.no_telp) document.getElementById('telp_penerima').value = c.no_telp;
+        // Aktifkan semua field penerima sebelum isi nilai
+        enablePenerimaFields();
+
+        document.getElementById('telp_penerima').value = c.no_telp ?? '';
+
         if (c.tujuan) {
             const sel = document.getElementById('tujuan_select');
             let matched = false;
@@ -520,7 +595,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!matched) { sel.value = 'lainnya'; document.getElementById('tujuan_input').value = c.tujuan; }
             toggleTujuan();
         }
-        if (c.alamat) document.getElementById('alamat_penerima').value = c.alamat;
+
+        document.getElementById('alamat_penerima').value = c.alamat ?? '';
+    });
+
+    // Penerima: jika user hapus isi input secara manual → unlock paksa
+    document.getElementById('nama_penerima').addEventListener('input', function() {
+        if (!lockedFields['penerima'] && this.value.trim() === '') {
+            document.getElementById('hint-cari-penerima').style.display = 'block';
+        }
     });
 });
 

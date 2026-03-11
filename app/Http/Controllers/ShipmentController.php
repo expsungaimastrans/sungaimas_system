@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Shipment;
 use App\Models\ShipmentLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ShipmentController extends Controller
@@ -211,6 +213,17 @@ public function exportCsv(Request $request)
             'barang.*.harga' => 'required|numeric|min:0',
         ]);
 
+
+        // ===== VALIDASI: penerima wajib terdaftar sebagai customer =====
+        $penerimaValid = Customer::where('nama', $request->nama_penerima)
+                                  ->where('tipe', 'PENERIMA')
+                                  ->exists();
+        if (!$penerimaValid) {
+            return back()
+                ->withInput()
+                ->withErrors(['nama_penerima' => 'Penerima harus terdaftar di data customer. Silakan tambahkan terlebih dahulu.']);
+        }
+
         // ===== nomor urut di bulan ini (4 digit) =====
         $bulan = now()->format('m');
         $seq = Shipment::whereYear('created_at', now()->year)
@@ -278,6 +291,9 @@ public function exportCsv(Request $request)
             'total_kg'   => (float)$shipment->items->sum(fn($it)=> (float)($it->berat_kg ?? 0)),
         ]);
 
+        // ===== KIRIM WA OTOMATIS =====
+        $this->kirimWaOtomatis($shipment);
+
         return redirect('/shipments/' . $shipment->id . '/success');
     }
 
@@ -340,6 +356,7 @@ public function exportCsv(Request $request)
             'barang.*.satuan_tarif' => 'required|in:kg,kubik,unit',
             'barang.*.harga' => 'required|numeric|min:0',
         ]);
+
 
         // hitung ulang total koli
         $totalKoli = 0;
@@ -522,7 +539,108 @@ public function exportCsv(Request $request)
         ]);
     }
 
-    private function waLink(?string $phone, Shipment $shipment): ?string
+    // =========================
+    // KIRIM WA OTOMATIS saat nota dibuat
+    // =========================
+    private function kirimWaOtomatis(Shipment $shipment): void
+    {
+        $userCode = env('KIRIMI_USER_CODE');
+        $secret   = env('KIRIMI_SECRET');
+        $deviceId = env('KIRIMI_DEVICE_ID');
+
+        if (empty($userCode) || empty($secret) || empty($deviceId)) {
+            Log::warning('kirimWaOtomatis: Kirimi credentials belum diset di .env');
+            return;
+        }
+
+        $total   = 'Rp ' . number_format((float) $shipment->harga_total, 0, ',', '.');
+        $tujuan  = $shipment->tujuan ?? '-';
+        $noNota  = $shipment->no_nota ?? '-';
+
+        // Detail barang
+        $detailBarang = '';
+        foreach ($shipment->items as $item) {
+            $detailBarang .= "  • {$item->nama_barang}";
+            if ($item->koli  > 0) $detailBarang .= " ({$item->koli} koli)";
+            if ($item->berat_kg > 0) $detailBarang .= " {$item->berat_kg} kg";
+            $detailBarang .= "\n";
+        }
+
+        // Pesan ke PENERIMA
+        $phonePenerima = $this->normalizePhone($shipment->telp_penerima);
+        if ($phonePenerima) {
+            $msgPenerima = "Halo *{$shipment->nama_penerima}*,\n\n"
+                . "📦 *Nota Pengiriman Sungai Mas Trans*\n"
+                . "─────────────────\n"
+                . "📄 *No Nota*   : {$noNota}\n"
+                . "👤 *Pengirim*  : {$shipment->nama_pengirim}\n"
+                . "📍 *Tujuan*    : {$tujuan}\n"
+                . "💰 *Total*     : {$total}\n"
+                . "─────────────────\n"
+                . "*Detail Barang:*\n{$detailBarang}"
+                . "\nBarang dalam proses pengiriman. Terima kasih telah menggunakan jasa kami! 🚚";
+
+            $this->sendKirimi($phonePenerima, $msgPenerima, $shipment, 'penerima');
+        }
+
+        // Pesan ke PENGIRIM
+        $phonePengirim = $this->normalizePhone($shipment->telp_pengirim);
+        if ($phonePengirim) {
+            $msgPengirim = "Halo *{$shipment->nama_pengirim}*,\n\n"
+                . "✅ *Nota berhasil dibuat - Sungai Mas Trans*\n"
+                . "─────────────────\n"
+                . "📄 *No Nota*   : {$noNota}\n"
+                . "👤 *Penerima*  : {$shipment->nama_penerima}\n"
+                . "📍 *Tujuan*    : {$tujuan}\n"
+                . "💰 *Total*     : {$total}\n"
+                . "─────────────────\n"
+                . "*Detail Barang:*\n{$detailBarang}"
+                . "\nTerima kasih telah mempercayakan pengiriman kepada kami! 🙏";
+
+            $this->sendKirimi($phonePengirim, $msgPengirim, $shipment, 'pengirim');
+        }
+    }
+
+    private function sendKirimi(string $phone, string $message, Shipment $shipment, string $target): void
+    {
+        $userCode = env('KIRIMI_USER_CODE');
+        $secret   = env('KIRIMI_SECRET');
+        $deviceId = env('KIRIMI_DEVICE_ID');
+
+        try {
+            $ctx = stream_context_create([
+                'http' => [
+                    'method'  => 'POST',
+                    'header'  => "Content-Type: application/json\r\n",
+                    'content' => json_encode([
+                        'user_code'          => $userCode,
+                        'secret'             => $secret,
+                        'device_id'          => $deviceId,
+                        'receiver'           => $phone,
+                        'message'            => $message,
+                        'enableTypingEffect' => false,
+                    ]),
+                    'timeout' => 15,
+                ],
+            ]);
+
+            $raw  = @file_get_contents('https://kirimi.id/api/v1/send-message', false, $ctx);
+            $body = $raw ? (array) json_decode($raw, true) : [];
+
+            Log::info("WA Otomatis [{$target}] nota {$shipment->no_nota}", [
+                'phone'   => $phone,
+                'success' => $body['success'] ?? false,
+                'raw'     => $raw,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error("WA Otomatis [{$target}] gagal: " . $e->getMessage(), [
+                'nota' => $shipment->no_nota,
+            ]);
+        }
+    }
+
+        private function waLink(?string $phone, Shipment $shipment): ?string
     {
         $phone = $this->normalizePhone($phone);
         if (!$phone) return null;
