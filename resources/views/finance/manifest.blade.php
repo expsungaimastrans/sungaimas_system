@@ -155,7 +155,7 @@
               @foreach($s->items as $it)
                 <div class="small lh-sm mb-1">
                   <span class="fw-semibold d-block" style="word-break:break-word;">{{ $it->nama_barang }}</span>
-                  <span class="text-muted">{{ (int)$it->koli }} koli@if((float)$it->berat_kg > 0) &middot; {{ (float)$it->berat_kg }} kg@endif</span>
+                  <span class="text-muted">{{ (int)$it->koli }} koli &middot; {{ (float)$it->berat_kg }} kg</span>
                 </div>
               @endforeach
               @if($s->items->isEmpty())<span class="text-muted small">-</span>@endif
