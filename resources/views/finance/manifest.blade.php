@@ -155,7 +155,10 @@
               @foreach($s->items as $it)
                 <div class="small lh-sm mb-1">
                   <span class="fw-semibold d-block" style="word-break:break-word;">{{ $it->nama_barang }}</span>
-                  <span class="text-muted">{{ (int)$it->koli }} koli@if((float)$it->berat_kg > 0) &middot; {{ (float)$it->berat_kg }} kg@endif</span>
+                  <span class="text-muted">
+                    {{ (int)$it->koli }} koli
+                    @if((float)$it->berat_kg > 0) &middot; {{ (float)$it->berat_kg }} kg @endif
+                  </span>
                 </div>
               @endforeach
               @if($s->items->isEmpty())<span class="text-muted small">-</span>@endif
@@ -185,10 +188,12 @@
 
             <td>
               @if($s->bukti_bayar_path)
-                <div class="d-flex gap-2 align-items-center">
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  {{-- Coba Storage::url() dulu, fallback ke route download --}}
                   <a class="btn btn-sm btn-outline-secondary"
-                     href="{{ asset('storage/'.$s->bukti_bayar_path) }}" target="_blank">
-                    Lihat
+                     href="{{ route('finance.bukti.download', $s->id) }}"
+                     target="_blank">
+                    👁 Lihat
                   </a>
                   <div class="text-muted small">{{ basename($s->bukti_bayar_path) }}</div>
                 </div>
