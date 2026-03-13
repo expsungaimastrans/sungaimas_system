@@ -9,10 +9,9 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class FinanceController extends Controller
 {
@@ -50,35 +49,10 @@ class FinanceController extends Controller
 
         $shipments = Shipment::with('items')
             ->whereIn('id', $ids)
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        $jalurOrder = [
-            'labuan bajo' => 1, 'labuanbajo' => 1,
-            'lembor'      => 2,
-            'ruteng'      => 3,
-            'borong'      => 4,
-            'aimere'      => 5, 'aimire' => 5,
-            'cancar'      => 6,
-            'bajawa'      => 7,
-            'soa'         => 8,
-            'bowae'       => 9,
-            'mbay'        => 10, 'nagekeo' => 10,
-            'mataloko'    => 11,
-            'ende'        => 12,
-            'riung'       => 13,
-            'raja'        => 14,
-        ];
-
-        $shipments = $shipments->sortBy(function ($s) use ($jalurOrder) {
-            $tujuan = strtolower(trim($s->tujuan ?? ''));
-            $order  = 99;
-            foreach ($jalurOrder as $key => $val) {
-                if (str_contains($tujuan, $key)) { $order = $val; break; }
-            }
-            return sprintf('%02d_%s', $order, strtolower($s->nama_penerima ?? ''));
-        })->values();
-
-        $total  = $shipments->count();
+        $total = $shipments->count();
         $unpaid = $shipments->where('status_pembayaran', '!=', 'LUNAS')->count();
 
         return view('finance.manifest', compact('manifest', 'shipments', 'total', 'unpaid'));
@@ -153,10 +127,10 @@ public function invoiceData(Request $request)
 
     $shipments = Shipment::query()
         ->whereNotNull('shipments.manifest_id') // hanya yang sudah masuk manifest
-        ->whereNotExists(function($qb){
-            $qb->select(DB::raw(1))
-               ->from('invoice_items')
-               ->whereColumn('invoice_items.shipment_id', 'shipments.id');
+        ->whereNotExists(function($q){
+            $q->select(DB::raw(1))
+              ->from('invoice_items')
+              ->whereColumn('invoice_items.shipment_id', 'shipments.id');
         })
         ->when($q, function($query) use ($q){
             $query->where(function($qq) use ($q){
@@ -214,12 +188,11 @@ public function storeInvoice(Request $request)
     return DB::transaction(function () use ($billedTo, $ids) {
 
         $shipments = Shipment::query()
-            ->whereIn('shipments.id', $ids)
-            ->whereNotExists(function ($qb) {
-                $qb->select(DB::raw(1))
-                   ->from('invoice_items')
-                   ->whereColumn('invoice_items.shipment_id', 'shipments.id');
-            })
+            ->whereIn('id', $ids)
+            ->whereNotNull('manifest_id')
+            ->leftJoin('invoice_items as ii','ii.shipment_id','=','shipments.id')
+            ->whereNull('ii.shipment_id')
+            ->select('shipments.*')
             ->lockForUpdate()
             ->get();
 
@@ -227,26 +200,22 @@ public function storeInvoice(Request $request)
             return back()->with('error', 'Nota yang dipilih tidak valid / sudah masuk tagihan lain.');
         }
 
-        $grandTotal = (float) $shipments->sum('harga_total');
-        $invoiceNo  = $this->generateInvoiceNo($billedTo);
+        $grandTotal = (float)$shipments->sum('harga_total');
+        $invoiceNo = $this->generateInvoiceNo($billedTo);
 
         $invoice = Invoice::create([
-            'invoice_no'  => $invoiceNo,
+            'invoice_no' => $invoiceNo,
             'manifest_id' => null,
-            'billed_to'   => $billedTo,
-            'status'      => 'BELUM_DITAGIH',
-            'total'       => $grandTotal,
+            'billed_to' => $billedTo,
+            'status' => 'BELUM_DITAGIH',
+            'total' => $grandTotal,
         ]);
 
         foreach ($shipments as $s) {
             InvoiceItem::create([
-                'invoice_id'  => $invoice->id,
+                'invoice_id' => $invoice->id,
                 'shipment_id' => $s->id,
-                'no_nota'     => $s->no_nota,
-                'penerima'    => $s->nama_penerima,
-                'tujuan'      => $s->tujuan,
-                'nilai'       => (float) $s->harga_total,
-                'amount'      => (float) $s->harga_total,
+                'amount' => (float)$s->harga_total,
             ]);
         }
 
@@ -360,12 +329,6 @@ public function storeInvoice(Request $request)
     ]);
 }
 
-
-
-
-
-
-
     // =========================
     // KIRIM WA TAGIHAN
     // =========================
@@ -386,9 +349,7 @@ public function storeInvoice(Request $request)
             return response()->json(['ok' => false, 'message' => 'Nomor telepon tidak valid.'], 422);
         }
 
-        // Gunakan URL route PDF langsung
-        $pdfUrl = route('finance.invoices.pdf', $invoice);
-
+        $pdfUrl  = route('finance.invoices.pdf', $invoice);
         $total   = 'Rp ' . number_format((float) $invoice->total, 0, ',', '.');
         $message = "Halo,\n\n"
             . "Berikut *Tagihan / Invoice* dari *Sungai Mas Trans*:\n\n"
@@ -419,13 +380,10 @@ public function storeInvoice(Request $request)
             $raw  = file_get_contents('https://kirimi.id/api/v1/send-message', false, $ctx);
             $body = $raw ? (array) json_decode($raw, true) : [];
 
-            Log::info('Kirimi invoice WA', ['receiver' => $receiver, 'pdf_url' => $pdfUrl, 'raw' => $raw]);
+            Log::info('Kirimi invoice WA', ['receiver' => $receiver, 'raw' => $raw]);
 
             if (!($body['success'] ?? false)) {
-                return response()->json([
-                    'ok'      => false,
-                    'message' => 'Kirimi error: ' . ($body['message'] ?? $raw),
-                ], 502);
+                return response()->json(['ok' => false, 'message' => 'Kirimi error: ' . ($body['message'] ?? $raw)], 502);
             }
         } catch (\Throwable $e) {
             Log::error('Invoice WA error', ['err' => $e->getMessage()]);
@@ -450,8 +408,8 @@ public function storeInvoice(Request $request)
     private function normalizePhone(string $phone): string
     {
         $phone = preg_replace('/\D/', '', $phone);
-        if (str_starts_with($phone, '08'))  return '62' . substr($phone, 1);
-        if (str_starts_with($phone, '8'))   return '62' . $phone;
+        if (str_starts_with($phone, '08')) return '62' . substr($phone, 1);
+        if (str_starts_with($phone, '8'))  return '62' . $phone;
         return $phone;
     }
 
@@ -503,21 +461,17 @@ public function storeInvoice(Request $request)
     // =========================
     public function availableShipments(Request $request)
     {
-        // Blade mengirim 'invoice_id', fallback ke 'exclude_invoice'
         $excludeInvoice = $request->query('invoice_id') ?? $request->query('exclude_invoice');
         $search         = trim((string) $request->query('q', ''));
 
         $shipments = Shipment::query()
-            // Hanya nota yang sudah masuk manifest
             ->whereNotNull('manifest_id')
-            // Belum masuk invoice manapun (kecuali invoice yang sedang diedit)
             ->whereNotExists(function ($qb) use ($excludeInvoice) {
                 $qb->select(DB::raw(1))
                    ->from('invoice_items')
                    ->whereColumn('invoice_items.shipment_id', 'shipments.id')
                    ->when($excludeInvoice, fn ($qq) => $qq->where('invoice_items.invoice_id', '!=', $excludeInvoice));
             })
-            // Filter pencarian
             ->when($search, function ($qb) use ($search) {
                 $qb->where(function ($qq) use ($search) {
                     $qq->where('no_nota',        'like', "%{$search}%")
@@ -531,37 +485,6 @@ public function storeInvoice(Request $request)
             ->get(['id', 'no_nota', 'nama_penerima', 'nama_pengirim', 'tujuan', 'harga_total', 'status_pembayaran']);
 
         return response()->json(['ok' => true, 'data' => $shipments]);
-    }
-
-
-    // =========================
-    // DOWNLOAD / LIHAT BUKTI BAYAR
-    // =========================
-    public function downloadBuktiBayar(Shipment $shipment)
-    {
-        if (empty($shipment->bukti_bayar_path)) {
-            abort(404, 'Bukti bayar tidak ditemukan.');
-        }
-
-        // Cek apakah file ada di disk public
-        if (!Storage::disk('public')->exists($shipment->bukti_bayar_path)) {
-            abort(404, 'File bukti bayar tidak ditemukan di storage.');
-        }
-
-        $mime = Storage::disk('public')->mimeType($shipment->bukti_bayar_path);
-        $ext  = pathinfo($shipment->bukti_bayar_path, PATHINFO_EXTENSION);
-        $filename = 'bukti-' . $shipment->no_nota . '.' . $ext;
-        $filename = str_replace(['/', '\\'], '-', $filename);
-
-        // Untuk gambar dan PDF → tampilkan inline di browser
-        $inlineMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-        $disposition = in_array($mime, $inlineMimes) ? 'inline' : 'attachment';
-
-        return Storage::disk('public')->response(
-            $shipment->bukti_bayar_path,
-            $filename,
-            ['Content-Disposition' => $disposition . '; filename="' . $filename . '"']
-        );
     }
 
 }
