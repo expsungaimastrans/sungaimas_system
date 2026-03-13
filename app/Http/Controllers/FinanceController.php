@@ -349,7 +349,38 @@ public function storeInvoice(Request $request)
             return response()->json(['ok' => false, 'message' => 'Nomor telepon tidak valid.'], 422);
         }
 
-        $pdfUrl  = route('finance.invoices.pdf', $invoice);
+        // 1. Generate PDF di memory
+        $invoice->loadMissing(['items.shipment.items']);
+        $shipments  = $invoice->items->map->shipment;
+        $grandTotal = (float) $invoice->total;
+
+        $pdfContent = Pdf::loadView('finance.tagihan-pdf', [
+            'invoice'    => $invoice,
+            'shipments'  => $shipments,
+            'grandTotal' => $grandTotal,
+        ])->setPaper('A4', 'portrait')->output();
+
+        // 2. Upload ke R2 (disk s3)
+        $safe   = preg_replace('/[^a-zA-Z0-9\-]/', '-', $invoice->invoice_no);
+        $r2Path = 'tagihan-pdf/' . $safe . '-' . now()->format('YmdHis') . '.pdf';
+
+        try {
+            \Illuminate\Support\Facades\Storage::disk('s3')->put($r2Path, $pdfContent, [
+                'ContentType'  => 'application/pdf',
+                'CacheControl' => 'no-cache',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Invoice WA: gagal upload PDF ke R2', ['err' => $e->getMessage()]);
+            return response()->json(['ok' => false, 'message' => 'Gagal upload PDF: ' . $e->getMessage()], 500);
+        }
+
+        // 3. Buat URL publik R2
+        $awsUrl = rtrim(env('AWS_URL', ''), '/');
+        $pdfUrl = $awsUrl
+            ? $awsUrl . '/' . $r2Path
+            : \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($r2Path, now()->addHours(48));
+
+        // 4. Kirim via Kirimi
         $total   = 'Rp ' . number_format((float) $invoice->total, 0, ',', '.');
         $message = "Halo,\n\n"
             . "Berikut *Tagihan / Invoice* dari *Sungai Mas Trans*:\n\n"
@@ -380,7 +411,7 @@ public function storeInvoice(Request $request)
             $raw  = file_get_contents('https://api.kirimi.id/v1/send-message', false, $ctx);
             $body = $raw ? (array) json_decode($raw, true) : [];
 
-            Log::info('Kirimi invoice WA', ['receiver' => $receiver, 'raw' => $raw]);
+            Log::info('Kirimi invoice WA', ['receiver' => $receiver, 'pdf_url' => $pdfUrl, 'raw' => $raw]);
 
             if (!($body['success'] ?? false)) {
                 return response()->json(['ok' => false, 'message' => 'Kirimi error: ' . ($body['message'] ?? $raw)], 502);
