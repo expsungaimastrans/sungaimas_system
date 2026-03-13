@@ -9,9 +9,9 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
 
 class FinanceController extends Controller
 {
@@ -377,7 +377,7 @@ public function storeInvoice(Request $request)
                 ],
             ]);
 
-            $raw  = file_get_contents('https://kirimi.id/api/v1/send-message', false, $ctx);
+            $raw  = file_get_contents('https://api.kirimi.id/v1/send-message', false, $ctx);
             $body = $raw ? (array) json_decode($raw, true) : [];
 
             Log::info('Kirimi invoice WA', ['receiver' => $receiver, 'raw' => $raw]);
