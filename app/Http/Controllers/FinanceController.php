@@ -10,6 +10,7 @@ use App\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -324,7 +325,7 @@ public function storeInvoice(Request $request)
         $shipments = $invoice->items->map->shipment;
         $grandTotal = (float)$invoice->total;
 
-        $pdf = Pdf::loadView('finance.invoice_pdf', [
+        $pdf = Pdf::loadView('finance.tagihan-pdf', [
             'invoice' => $invoice,
             'shipments' => $shipments,
             'grandTotal' => $grandTotal,
@@ -530,6 +531,37 @@ public function storeInvoice(Request $request)
             ->get(['id', 'no_nota', 'nama_penerima', 'nama_pengirim', 'tujuan', 'harga_total', 'status_pembayaran']);
 
         return response()->json(['ok' => true, 'data' => $shipments]);
+    }
+
+
+    // =========================
+    // DOWNLOAD / LIHAT BUKTI BAYAR
+    // =========================
+    public function downloadBuktiBayar(Shipment $shipment)
+    {
+        if (empty($shipment->bukti_bayar_path)) {
+            abort(404, 'Bukti bayar tidak ditemukan.');
+        }
+
+        // Cek apakah file ada di disk public
+        if (!Storage::disk('public')->exists($shipment->bukti_bayar_path)) {
+            abort(404, 'File bukti bayar tidak ditemukan di storage.');
+        }
+
+        $mime = Storage::disk('public')->mimeType($shipment->bukti_bayar_path);
+        $ext  = pathinfo($shipment->bukti_bayar_path, PATHINFO_EXTENSION);
+        $filename = 'bukti-' . $shipment->no_nota . '.' . $ext;
+        $filename = str_replace(['/', '\\'], '-', $filename);
+
+        // Untuk gambar dan PDF → tampilkan inline di browser
+        $inlineMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+        $disposition = in_array($mime, $inlineMimes) ? 'inline' : 'attachment';
+
+        return Storage::disk('public')->response(
+            $shipment->bukti_bayar_path,
+            $filename,
+            ['Content-Disposition' => $disposition . '; filename="' . $filename . '"']
+        );
     }
 
 }
