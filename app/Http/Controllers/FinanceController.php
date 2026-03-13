@@ -49,10 +49,35 @@ class FinanceController extends Controller
 
         $shipments = Shipment::with('items')
             ->whereIn('id', $ids)
-            ->orderBy('created_at', 'desc')
             ->get();
 
-        $total = $shipments->count();
+        $jalurOrder = [
+            'labuan bajo' => 1, 'labuanbajo' => 1,
+            'lembor'      => 2,
+            'ruteng'      => 3,
+            'borong'      => 4,
+            'aimere'      => 5, 'aimire' => 5,
+            'cancar'      => 6,
+            'bajawa'      => 7,
+            'soa'         => 8,
+            'bowae'       => 9,
+            'mbay'        => 10, 'nagekeo' => 10,
+            'mataloko'    => 11,
+            'ende'        => 12,
+            'riung'       => 13,
+            'raja'        => 14,
+        ];
+
+        $shipments = $shipments->sortBy(function ($s) use ($jalurOrder) {
+            $tujuan = strtolower(trim($s->tujuan ?? ''));
+            $order  = 99;
+            foreach ($jalurOrder as $key => $val) {
+                if (str_contains($tujuan, $key)) { $order = $val; break; }
+            }
+            return sprintf('%02d_%s', $order, strtolower($s->nama_penerima ?? ''));
+        })->values();
+
+        $total  = $shipments->count();
         $unpaid = $shipments->where('status_pembayaran', '!=', 'LUNAS')->count();
 
         return view('finance.manifest', compact('manifest', 'shipments', 'total', 'unpaid'));
