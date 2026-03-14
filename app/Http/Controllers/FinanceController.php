@@ -213,11 +213,12 @@ public function storeInvoice(Request $request)
     return DB::transaction(function () use ($billedTo, $ids) {
 
         $shipments = Shipment::query()
-            ->whereIn('id', $ids)
-            ->whereNotNull('manifest_id')
-            ->leftJoin('invoice_items as ii','ii.shipment_id','=','shipments.id')
-            ->whereNull('ii.shipment_id')
-            ->select('shipments.*')
+            ->whereIn('shipments.id', $ids)
+            ->whereNotExists(function ($qb) {
+                $qb->select(DB::raw(1))
+                   ->from('invoice_items')
+                   ->whereColumn('invoice_items.shipment_id', 'shipments.id');
+            })
             ->lockForUpdate()
             ->get();
 
@@ -225,22 +226,26 @@ public function storeInvoice(Request $request)
             return back()->with('error', 'Nota yang dipilih tidak valid / sudah masuk tagihan lain.');
         }
 
-        $grandTotal = (float)$shipments->sum('harga_total');
-        $invoiceNo = $this->generateInvoiceNo($billedTo);
+        $grandTotal = (float) $shipments->sum('harga_total');
+        $invoiceNo  = $this->generateInvoiceNo($billedTo);
 
         $invoice = Invoice::create([
-            'invoice_no' => $invoiceNo,
+            'invoice_no'  => $invoiceNo,
             'manifest_id' => null,
-            'billed_to' => $billedTo,
-            'status' => 'BELUM_DITAGIH',
-            'total' => $grandTotal,
+            'billed_to'   => $billedTo,
+            'status'      => 'BELUM_DITAGIH',
+            'total'       => $grandTotal,
         ]);
 
         foreach ($shipments as $s) {
             InvoiceItem::create([
-                'invoice_id' => $invoice->id,
+                'invoice_id'  => $invoice->id,
                 'shipment_id' => $s->id,
-                'amount' => (float)$s->harga_total,
+                'no_nota'     => $s->no_nota,
+                'penerima'    => $s->nama_penerima,
+                'tujuan'      => $s->tujuan,
+                'nilai'       => (float) $s->harga_total,
+                'amount'      => (float) $s->harga_total,
             ]);
         }
 
