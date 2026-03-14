@@ -103,8 +103,14 @@ class FinanceController extends Controller
         return DB::transaction(function () use ($request, $shipment, $data) {
 
             if ($request->hasFile('bukti_bayar')) {
-                $path = $request->file('bukti_bayar')->store('bukti-bayar', 'public');
-                $shipment->bukti_bayar_path = $path;
+                $file     = $request->file('bukti_bayar');
+                $ext      = $file->getClientOriginalExtension();
+                $r2Path   = 'bukti-bayar/' . uniqid() . '.' . $ext;
+                \Illuminate\Support\Facades\Storage::disk('s3')->put($r2Path, file_get_contents($file->getRealPath()), [
+                    'ContentType' => $file->getMimeType(),
+                ]);
+                $awsUrl  = rtrim(env('AWS_URL', ''), '/');
+                $shipment->bukti_bayar_path = $awsUrl ? $awsUrl . '/' . $r2Path : $r2Path;
             }
 
             $shipment->tipe_bayar = $data['tipe_bayar'];
@@ -304,8 +310,14 @@ public function storeInvoice(Request $request)
         return DB::transaction(function () use ($request, $invoice, $data) {
 
             if ($request->hasFile('proof')) {
-                $path = $request->file('proof')->store('bukti-tagihan', 'public');
-                $invoice->payment_proof_path = $path;
+                $file   = $request->file('proof');
+                $ext    = $file->getClientOriginalExtension();
+                $r2Path = 'bukti-tagihan/' . uniqid() . '.' . $ext;
+                \Illuminate\Support\Facades\Storage::disk('s3')->put($r2Path, file_get_contents($file->getRealPath()), [
+                    'ContentType' => $file->getMimeType(),
+                ]);
+                $awsUrl  = rtrim(env('AWS_URL', ''), '/');
+                $invoice->payment_proof_path = $awsUrl ? $awsUrl . '/' . $r2Path : $r2Path;
             }
 
             $invoice->status  = $data['status'];
