@@ -308,9 +308,27 @@ public function storeInvoice(Request $request)
                 $invoice->payment_proof_path = $path;
             }
 
-            $invoice->status = $data['status'];
+            $invoice->status  = $data['status'];
             $invoice->paid_at = ($data['status'] === 'LUNAS') ? now() : null;
             $invoice->save();
+
+            // Jika tagihan LUNAS → semua nota di dalam tagihan ikut LUNAS
+            if ($data['status'] === 'LUNAS') {
+                $shipmentIds = $invoice->items()->pluck('shipment_id');
+                Shipment::whereIn('id', $shipmentIds)->update([
+                    'status_pembayaran' => 'LUNAS',
+                    'paid_at'           => now(),
+                ]);
+            }
+
+            // Jika tagihan dibatalkan kembali → reset nota ke BELUM_BAYAR
+            if (in_array($data['status'], ['BELUM_DITAGIH', 'MENUNGGU_PEMBAYARAN'])) {
+                $shipmentIds = $invoice->items()->pluck('shipment_id');
+                Shipment::whereIn('id', $shipmentIds)->update([
+                    'status_pembayaran' => 'BELUM_BAYAR',
+                    'paid_at'           => null,
+                ]);
+            }
 
             return back()->with('success', 'Status tagihan diupdate.');
         });
