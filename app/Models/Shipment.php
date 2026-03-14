@@ -30,6 +30,10 @@ class Shipment extends Model
         'status_pengiriman',
         'status_pembayaran',
         'manifest_id',
+        'manifested_at',
+        'paid_at',
+        'tipe_bayar',
+        'bukti_bayar_path',
     ];
 
     public function items()
