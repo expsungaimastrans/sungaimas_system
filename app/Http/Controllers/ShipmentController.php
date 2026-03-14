@@ -224,13 +224,25 @@ public function exportCsv(Request $request)
                 ->withErrors(['nama_penerima' => 'Penerima harus terdaftar di data customer. Silakan tambahkan terlebih dahulu.']);
         }
 
-        // ===== nomor urut di bulan ini (4 digit) =====
-        $bulan = now()->format('m');
-        $seq = Shipment::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->count() + 1;
-        $urut = str_pad($seq, 4, '0', STR_PAD_LEFT);
+       // ===== nomor urut di bulan ini (4 digit) — pakai ID terakhir bukan count =====
+       $bulan = now()->format('m');
 
+       $lastNota = Shipment::whereYear('created_at', now()->year)
+           ->whereMonth('created_at', now()->month)
+           ->where('no_nota', 'like', $bulan . '%')
+           ->orderByDesc('id')
+           ->value('no_nota');
+
+       $lastSeq = 0;
+       if ($lastNota) {
+           $part    = explode('/', $lastNota)[0]; // "030404" → ambil sebelum slash
+           $lastSeq = (int) substr($part, -4);    // ambil 4 digit terakhir
+       }
+
+       $urut = str_pad($lastSeq + 1, 4, '0', STR_PAD_LEFT);
+
+
+       
         // ===== total koli dalam nota =====
         $totalKoli = 0;
         foreach ($request->barang as $b) {
