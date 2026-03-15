@@ -73,6 +73,7 @@ class ManifestController extends Controller
                     $barangLines = $shipment->items->values()->map(function ($it, $i) {
                         return ($i + 1) . ") " . strtoupper((string)($it->nama_barang ?? ''));
                     })->implode("\n");
+                    $barangLines = mb_substr($barangLines, 0, 1000);
 
                     $manifest->items()->create([
                         'shipment_id'  => $shipment->id,
@@ -160,6 +161,7 @@ class ManifestController extends Controller
             $barangLines = $shipment->items->values()->map(function ($it, $i) {
                 return ($i + 1) . ") " . strtoupper((string)($it->nama_barang ?? ''));
             })->implode("\n");
+            $barangLines = mb_substr($barangLines, 0, 1000);
 
             $item = $manifest->items()->create([
                 'shipment_id'  => $shipment->id,

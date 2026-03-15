@@ -369,7 +369,7 @@ async function addShipmentAjax(shipmentId, btnEl){
     console.error(e);
     btnEl.disabled = false;
     btnEl.textContent = 'Tambah';
-    showAlert('error','Error ' + res.status + ': ' + errText.substring(0, 200));
+    showAlert('error','Gagal menambahkan nota.');
   }
 }
 
