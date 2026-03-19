@@ -131,8 +131,18 @@ async function kirimWaTagihan(btn) {
           <label class="form-label fw-semibold">Bukti Pembayaran (jpg/png/pdf)</label>
           <input type="file" name="proof" class="form-control">
           @if($invoice->payment_proof_path)
-            <div class="text-muted small mt-1">Sudah ada bukti tersimpan.</div>
-          @endif
+  @php
+    $proofUrl = str_starts_with($invoice->payment_proof_path, 'http')
+      ? $invoice->payment_proof_path
+      : asset('storage/' . $invoice->payment_proof_path);
+  @endphp
+  <div class="mt-1 d-flex align-items-center gap-2">
+    <a href="{{ $proofUrl }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+      📎 Lihat Bukti
+    </a>
+    <span class="text-muted small">Sudah ada bukti tersimpan.</span>
+  </div>
+@endif
         </div>
 
         <div class="col-md-3 text-end">
@@ -164,7 +174,8 @@ async function kirimWaTagihan(btn) {
               <td class="text-center fw-bold">{{ $it->shipment->no_nota ?? '-' }}</td>
               <td>{{ $it->shipment->nama_penerima ?? '-' }}</td>
               <td class="text-center">{{ $it->shipment->tujuan ?? '-' }}</td>
-              <td class="text-end">Rp {{ number_format($it->amount,0,',','.') }}</td>
+              @php $nilaiTampil = ($it->amount > 0) ? $it->amount : ($it->shipment->harga_total ?? 0); @endphp
+              <td class="text-end">Rp {{ number_format($nilaiTampil,0,',','.') }}</td>
               <td class="text-center">{{ $it->shipment->status_pembayaran ?? '-' }}</td>
             </tr>
           @endforeach
