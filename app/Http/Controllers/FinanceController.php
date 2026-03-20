@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\ManifestBiayaOps;
 
 class FinanceController extends Controller
 {
@@ -80,7 +81,11 @@ class FinanceController extends Controller
         $total  = $shipments->count();
         $unpaid = $shipments->where('status_pembayaran', '!=', 'LUNAS')->count();
 
-        return view('finance.manifest', compact('manifest', 'shipments', 'total', 'unpaid'));
+        $biayaOpsRaw = ManifestBiayaOps::where('manifest_id', $manifest->id)->get();
+        $biayaOps = $biayaOpsRaw->keyBy('lokasi')->toArray();
+        $biayaOpsKeterangan = $biayaOpsRaw->first()?->keterangan ?? '';
+
+        return view('finance.manifest', compact('manifest', 'shipments', 'total', 'unpaid', 'biayaOps', 'biayaOpsKeterangan'));
     }
 
     // =========================
@@ -364,6 +369,27 @@ public function storeInvoice(Request $request)
 
         return $pdf->stream("tagihan-{$safe}.pdf");
     }
+
+
+        // =========================
+    // SIMPAN BIAYA OPERASIONAL
+    // =========================
+    public function saveBiayaOps(Request $request, \App\Models\Manifest $manifest)
+    {
+        $biaya = $request->input('biaya', []);
+        $keterangan = $request->input('keterangan', '');
+
+        foreach ($biaya as $lokasi => $jumlah) {
+            ManifestBiayaOps::updateOrCreate(
+                ['manifest_id' => $manifest->id, 'lokasi' => $lokasi],
+                ['jumlah' => (float)($jumlah ?? 0), 'keterangan' => $keterangan]
+            );
+        }
+
+        return back()->with('success', 'Biaya operasional berhasil disimpan.');
+    }
+
+
 
     public function manifestShipmentsJson(Manifest $manifest)
 {

@@ -139,6 +139,7 @@ Route::middleware('role:owner,admin,finance')->group(function () {
 
         // Kelola finance per manifest (opsional)
         Route::get('/manifest/{manifest}', [FinanceController::class, 'byManifest'])->name('finance.manifest');
+        Route::post('/finance/manifests/{manifest}/biaya', [FinanceController::class, 'saveBiayaOps'])->name('finance.manifest.biaya');
         Route::post('/shipments/{shipment}/update', [FinanceController::class, 'updateShipmentFinance'])->name('finance.shipment.update');
 
         // JSON shipments per manifest (ini yang kamu akses /finance/manifest/8/shipments)

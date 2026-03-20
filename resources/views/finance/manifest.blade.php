@@ -215,4 +215,135 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 </script>
+
+{{-- ===================== RINGKASAN PER KOTA ===================== --}}
+@php
+  $kotaStats = [];
+  foreach ($shipments as $s) {
+    $kota = trim($s->tujuan ?? 'Lainnya');
+    if (!isset($kotaStats[$kota])) {
+      $kotaStats[$kota] = ['total' => 0, 'lunas' => 0, 'nilai_lunas' => 0, 'nilai_total' => 0];
+    }
+    $kotaStats[$kota]['total']++;
+    $kotaStats[$kota]['nilai_total'] += (float)($s->harga_total ?? 0);
+    if ($s->status_pembayaran === 'LUNAS') {
+      $kotaStats[$kota]['lunas']++;
+      $kotaStats[$kota]['nilai_lunas'] += (float)($s->harga_total ?? 0);
+    }
+  }
+  ksort($kotaStats);
+
+  $grandLunas = $shipments->where('status_pembayaran','LUNAS')->sum('harga_total');
+  $grandTotal = $shipments->sum('harga_total');
+@endphp
+
+<div class="card shadow-sm mt-3 mb-3">
+  <div class="card-body">
+    <div class="fw-semibold mb-3">📊 Ringkasan Pembayaran per Kota</div>
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle table-sm">
+        <thead class="table-light">
+          <tr class="text-center">
+            <th>Kota Tujuan</th>
+            <th>Total Nota</th>
+            <th>Lunas</th>
+            <th>Belum Lunas</th>
+            <th>Nilai Lunas</th>
+            <th>Nilai Total</th>
+            <th>Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($kotaStats as $kota => $stat)
+            @php
+              $pct      = $stat['total'] > 0 ? round($stat['lunas'] / $stat['total'] * 100) : 0;
+              $barClass = $pct == 100 ? 'bg-success' : ($pct >= 50 ? 'bg-warning' : 'bg-danger');
+            @endphp
+            <tr>
+              <td class="fw-semibold">{{ $kota }}</td>
+              <td class="text-center">{{ $stat['total'] }}</td>
+              <td class="text-center text-success fw-semibold">{{ $stat['lunas'] }}</td>
+              <td class="text-center text-danger">{{ $stat['total'] - $stat['lunas'] }}</td>
+              <td class="text-end">Rp {{ number_format($stat['nilai_lunas'],0,',','.') }}</td>
+              <td class="text-end">Rp {{ number_format($stat['nilai_total'],0,',','.') }}</td>
+              <td style="min-width:120px;">
+                <div class="progress" style="height:18px;">
+                  <div class="progress-bar {{ $barClass }}" style="width:{{ $pct }}%">{{ $pct }}%</div>
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+        <tfoot class="table-light fw-bold">
+          <tr>
+            <td>TOTAL</td>
+            <td class="text-center">{{ $shipments->count() }}</td>
+            <td class="text-center text-success">{{ $shipments->where('status_pembayaran','LUNAS')->count() }}</td>
+            <td class="text-center text-danger">{{ $shipments->where('status_pembayaran','!=','LUNAS')->count() }}</td>
+            <td class="text-end">Rp {{ number_format($grandLunas,0,',','.') }}</td>
+            <td class="text-end">Rp {{ number_format($grandTotal,0,',','.') }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+{{-- ===================== BIAYA OPERASIONAL ===================== --}}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="fw-semibold mb-1">💰 Biaya Operasional Manifest</div>
+    <div class="text-muted small mb-3">Catat pengeluaran operasional per lokasi pengurus untuk manifest ini.</div>
+
+    <form method="POST" action="{{ route('finance.manifest.biaya', $manifest) }}">
+      @csrf
+      <div class="row g-3">
+        @foreach(['Mbay', 'Labuan Bajo', 'Ende'] as $lokasi)
+          @php $existing = $biayaOps[$lokasi] ?? null; @endphp
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ $lokasi }}</label>
+            <div class="input-group">
+              <span class="input-group-text">Rp</span>
+              <input type="number" name="biaya[{{ $lokasi }}]" class="form-control"
+                     value="{{ $existing ? (int)$existing['jumlah'] : '' }}"
+                     placeholder="0" min="0">
+            </div>
+            @if($existing)
+              <div class="text-muted small mt-1">
+                Diupdate: {{ \Carbon\Carbon::parse($existing['updated_at'])->format('d/m/Y H:i') }}
+              </div>
+            @endif
+          </div>
+        @endforeach
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          <label class="form-label fw-semibold">Keterangan Tambahan</label>
+          <input type="text" name="keterangan" class="form-control"
+                 value="{{ $biayaOpsKeterangan ?? '' }}"
+                 placeholder="Misal: transport, makan sopir, dll">
+        </div>
+      </div>
+
+      <div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        @php
+          $totalBiaya     = collect($biayaOps ?? [])->sum('jumlah');
+          $totalPemasukan = $grandLunas;
+          $netto          = $totalPemasukan - $totalBiaya;
+        @endphp
+        <div class="text-muted small">
+          Total Biaya: <strong>Rp {{ number_format($totalBiaya,0,',','.') }}</strong> &nbsp;|&nbsp;
+          Pemasukan Lunas: <strong>Rp {{ number_format($totalPemasukan,0,',','.') }}</strong> &nbsp;|&nbsp;
+          Netto: <strong class="{{ $netto >= 0 ? 'text-success' : 'text-danger' }}">
+            Rp {{ number_format($netto,0,',','.') }}
+          </strong>
+        </div>
+        <button class="btn btn-brand px-4">💾 Simpan Biaya</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 @endsection
