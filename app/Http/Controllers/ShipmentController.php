@@ -67,9 +67,12 @@ class ShipmentController extends Controller
         // summary (sesuai filter!)
         $summaryBase = clone $base;
     
+        // Omzet hanya dihitung jika ada filter aktif
+        $hasFilter = $q || $tujuan || $penerima || $sp || $sk || $from || $to;
+
         $summary = [
             'count' => (clone $summaryBase)->count(),
-            'omzet' => (float) (clone $summaryBase)->sum('harga_total'),
+            'omzet' => $hasFilter ? (float) (clone $summaryBase)->sum('harga_total') : 0,
             'piutang' => (float) (clone $summaryBase)->where('status_pembayaran', 'PIUTANG')->sum('harga_total'),
             'belum_bayar' => (clone $summaryBase)->where('status_pembayaran', 'BELUM_BAYAR')->count(),
             'dalam_pengiriman' => (clone $summaryBase)->where('status_pengiriman', 'DALAM_PENGIRIMAN')->count(),
@@ -242,7 +245,7 @@ public function exportCsv(Request $request)
        $urut = str_pad($lastSeq + 1, 4, '0', STR_PAD_LEFT);
 
 
-       
+
         // ===== total koli dalam nota =====
         $totalKoli = 0;
         foreach ($request->barang as $b) {
