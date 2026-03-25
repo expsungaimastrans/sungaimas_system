@@ -62,6 +62,102 @@
     </div>
 </div>
 
+{{-- STATUS MANIFEST --}}
+@php
+  $statusManifest = $manifest->status ?? 'PERSIAPAN';
+  $statusColor = match($statusManifest) {
+    'DALAM_PERJALANAN' => 'text-bg-primary',
+    'SELESAI'          => 'text-bg-success',
+    default            => 'text-bg-secondary',
+  };
+  $statusLabel = match($statusManifest) {
+    'DALAM_PERJALANAN' => '🚚 Dalam Perjalanan',
+    'SELESAI'          => '✅ Selesai',
+    default            => '⏳ Persiapan',
+  };
+@endphp
+
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <div class="text-muted small mb-1">Status Pengiriman Manifest</div>
+      <span class="badge fs-6 {{ $statusColor }}">{{ $statusLabel }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      @if($statusManifest === 'PERSIAPAN')
+        <button class="btn btn-primary" onclick="updateStatus('DALAM_PERJALANAN')">
+          🚚 Berangkat
+        </button>
+      @elseif($statusManifest === 'DALAM_PERJALANAN')
+        <button class="btn btn-outline-primary" onclick="updateStatus('PERSIAPAN')">
+          ← Kembali ke Persiapan
+        </button>
+        <button class="btn btn-success" onclick="konfirmasiSelesai()">
+          ✅ Selesai
+        </button>
+      @elseif($statusManifest === 'SELESAI')
+        <button class="btn btn-outline-secondary btn-sm" onclick="updateStatus('DALAM_PERJALANAN')">
+          ↩ Batalkan Selesai
+        </button>
+      @endif
+    </div>
+  </div>
+</div>
+
+{{-- Modal konfirmasi selesai --}}
+<div class="modal fade" id="modalSelesai" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Konfirmasi Selesai</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tandai manifest <strong>{{ $manifest->no_manifest }}</strong> sebagai <strong>SELESAI</strong>?</p>
+        <p class="text-muted small">Semua nota dalam manifest ini akan otomatis diubah status pengirimannya menjadi <strong>SELESAI</strong>.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-success" onclick="updateStatus('SELESAI')">✅ Ya, Selesai</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function konfirmasiSelesai() {
+  new bootstrap.Modal(document.getElementById('modalSelesai')).show();
+}
+
+async function updateStatus(status) {
+  const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelesai'));
+  if (modal) modal.hide();
+
+  try {
+    const res = await fetch('{{ route("manifests.updateStatus", $manifest) }}', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      alert('Gagal update status: ' + (data.message ?? 'Unknown error'));
+      return;
+    }
+    window.location.reload();
+  } catch (e) {
+    alert('Gagal menghubungi server: ' + e.message);
+  }
+}
+</script>
+
 {{-- ===================== TAMBAH NOTA (TABLE) ===================== --}}
 <div class="card shadow-sm mb-4">
     <div class="card-body">
