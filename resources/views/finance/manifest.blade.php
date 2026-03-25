@@ -298,8 +298,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     <form method="POST" action="{{ route('finance.manifest.biaya', $manifest) }}">
       @csrf
+      @php
+        // Mapping kota tujuan ke nama lokasi pengurus
+        $lokasiPengurus = [
+          'Mbay'       => ['mbay', 'nagekeo'],
+          'Ende'       => ['ende'],
+          'Bajawa'     => ['bajawa'],
+          'Lembor'     => ['lembor'],
+          'Ruteng'     => ['ruteng'],
+          'Labuan Bajo'=> ['labuan bajo', 'labuanbajo'],
+        ];
+
+        // Cek kota mana yang ada dalam manifest ini
+        $kotaDiManifest = $shipments->pluck('tujuan')->map(fn($t) => strtolower(trim($t)))->unique();
+
+        $lokasiAktif = collect($lokasiPengurus)->filter(function($keywords) use ($kotaDiManifest) {
+          foreach ($keywords as $kw) {
+            foreach ($kotaDiManifest as $kota) {
+              if (str_contains($kota, $kw)) return true;
+            }
+          }
+          return false;
+        })->keys();
+      @endphp
+
+      @if($lokasiAktif->isEmpty())
+        <div class="text-muted small">Tidak ada kota yang memiliki pengurus dalam manifest ini.</div>
+      @else
       <div class="row g-3">
-        @foreach(['Mbay', 'Labuan Bajo', 'Ende'] as $lokasi)
+        @foreach($lokasiAktif as $lokasi)
+          
           @php $existing = $biayaOps[$lokasi] ?? null; @endphp
           <div class="col-md-4">
             <label class="form-label fw-semibold">{{ $lokasi }}</label>
@@ -315,8 +343,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
               </div>
             @endif
           </div>
-        @endforeach
-      </div>
+          @endforeach
+        </div>
+        @endif
 
       <div class="row g-3 mt-1">
         <div class="col-12">
