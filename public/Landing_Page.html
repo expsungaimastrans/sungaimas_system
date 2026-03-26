@@ -1159,51 +1159,61 @@
         }
   
         const d = data.data;
-  
-        const color =
-          d.status === 'SELESAI' ? '#16a34a' :
-          d.status === 'DALAM PENGIRIMAN' ? '#C0171C' :
-          '#B8860B';
-  
-        const bg =
-          d.status === 'SELESAI' ? '#f0fdf4' :
-          d.status === 'DALAM PENGIRIMAN' ? '#fff7f7' :
-          '#fffaf0';
-  
-        result.innerHTML = `
-          <div style="border-left:4px solid ${color};padding-left:16px;margin-bottom:16px;background:${bg};padding:14px 16px;border-radius:8px;">
-            <div style="font-weight:800;font-size:1rem;color:${color};margin-bottom:4px;">● ${escapeHtml(d.status)}</div>
-            <div style="font-size:.82rem;color:#7A6555;">No. Nota: <strong style="color:#1A1008">${escapeHtml(d.tracking_number ?? v)}</strong></div>
-          </div>
-  
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.875rem;margin-bottom:16px;">
-            <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
-              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Tujuan</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.tujuan ?? '-')}</div>
-            </div>
-  
-            <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
-              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Koli</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.koli ?? '-')}</div>
-            </div>
-  
-            <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
-              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Posisi Terkini</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.lokasi ?? '-')}</div>
-            </div>
-  
-            <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
-              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Estimasi / Update</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.estimasi_tiba ?? d.updated_at ?? '-')}</div>
-            </div>
-          </div>
-  
-          <div style="margin-bottom:6px;font-size:.8rem;color:#7A6555;font-weight:600;">Progress Pengiriman</div>
-          <div style="background:#E8DDD0;border-radius:100px;height:10px;overflow:hidden;">
-            <div style="width:${Number(d.progress ?? 0)}%;height:100%;background:linear-gradient(90deg,${color},#D4A017);border-radius:100px;transition:width .8s;"></div>
-          </div>
-          <div style="text-align:right;font-size:.75rem;color:#7A6555;margin-top:4px;">${escapeHtml(d.progress ?? 0)}% selesai</div>
-        `;
+
+const color =
+  d.status === 'SELESAI' ? '#16a34a' :
+  d.status === 'DALAM PENGIRIMAN' ? '#C0171C' :
+  '#B8860B';
+
+const bg =
+  d.status === 'SELESAI' ? '#f0fdf4' :
+  d.status === 'DALAM PENGIRIMAN' ? '#fff7f7' :
+  '#fffaf0';
+
+result.innerHTML = `
+  <div style="border-left:4px solid ${color};padding-left:16px;margin-bottom:16px;background:${bg};padding:14px 16px;border-radius:8px;">
+    <div style="font-weight:800;font-size:1rem;color:${color};margin-bottom:4px;">
+      ● ${escapeHtml(d.status)}
+    </div>
+    <div style="font-size:.82rem;color:#7A6555;margin-bottom:8px;">
+      No. Nota: <strong style="color:#1A1008">${escapeHtml(d.tracking_number ?? v)}</strong>
+    </div>
+    <div style="font-size:.88rem;color:#4A3728;line-height:1.7;">
+      ${escapeHtml(d.status_description ?? '-')}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.875rem;margin-bottom:16px;">
+    <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
+      <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Tujuan</div>
+      <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.tujuan ?? '-')}</div>
+    </div>
+
+    <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
+      <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Koli</div>
+      <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.koli ?? '-')}</div>
+    </div>
+
+    <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
+      <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Posisi Terkini</div>
+      <div style="color:#1A1008;font-weight:600;line-height:1.6;">${escapeHtml(d.lokasi ?? '-')}</div>
+    </div>
+
+    <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
+      <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Estimasi / Update</div>
+      <div style="color:#1A1008;font-weight:600;line-height:1.6;">${escapeHtml(d.estimasi_tiba ?? '-')}</div>
+      ${d.countdown_text ? `<div style="margin-top:6px;font-size:.78rem;color:#7A6555;line-height:1.5;">${escapeHtml(d.countdown_text)}</div>` : ''}
+    </div>
+  </div>
+
+  <div style="margin-bottom:6px;font-size:.8rem;color:#7A6555;font-weight:600;">Progress Pengiriman</div>
+  <div style="background:#E8DDD0;border-radius:100px;height:10px;overflow:hidden;">
+    <div style="width:${Number(d.progress ?? 0)}%;height:100%;background:linear-gradient(90deg,${color},#D4A017);border-radius:100px;transition:width .8s;"></div>
+  </div>
+  <div style="text-align:right;font-size:.75rem;color:#7A6555;margin-top:4px;">
+    ${escapeHtml(d.progress ?? 0)}% selesai
+  </div>
+`;
       } catch (err) {
         console.error('TRACK ERROR:', err);
         result.innerHTML = `

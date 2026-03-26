@@ -73,4 +73,9 @@ public function invoiceItems()
         return $this->belongsTo(\App\Models\Customer::class, 'nama_pengirim', 'nama')
                     ->where('tipe', 'PENGIRIM');
     }
+
+    public function manifestItems()
+{
+    return $this->hasMany(\App\Models\ManifestItem::class, 'shipment_id');
+}
 }
