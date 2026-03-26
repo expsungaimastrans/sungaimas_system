@@ -558,6 +558,24 @@
     .arm-stat { border-right: none; border-bottom: 1px solid var(--border); }
     .arm-stat:last-child { border: none; }
   }
+
+    #tracking-result {
+      margin-top: 24px;
+      min-height: 60px;
+      background: #fffaf4;
+      border-radius: 6px;
+      padding: 20px 24px;
+      border: 1px solid rgba(201,168,76,0.18);
+      font-size: .9rem;
+      color: #1A1008;
+      line-height: 1.7;
+      display: none;
+    }
+  
+    #tracking-result.active {
+      display: block;
+    }
+  
 </style>
 </head>
 <body>
@@ -1054,42 +1072,79 @@
 <a href="https://wa.me/628123456789?text=Halo%20Sungai%20Mas%20Trans%2C%20saya%20ingin%20konsultasi" 
    target="_blank" class="wa-btn" title="Chat WhatsApp">💬</a>
 
-<script>
-  // ── TRACKING ──
+   <script>
+    // TRACKING
     const TRACKING_API_BASE = '/api/public/track';
-    // kalau beda domain:
-    // const TRACKING_API_BASE = 'https://domain-system-kamu.com/api/public/track';
+  
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
   
     async function trackShipment() {
-      var v = document.getElementById('trackingInput').value.trim().toUpperCase();
-      var r = document.getElementById('tracking-result');
+      const inputEl = document.getElementById('trackingInput');
+      const resultEl = document.getElementById('tracking-result');
   
-      if (!v) {
-        r.className = 'active';
-        r.innerHTML = '<div style="color:#C0171C;font-weight:700;">⚠️ Masukkan nomor nota terlebih dahulu.</div>';
+      if (!inputEl || !resultEl) {
+        console.error('Elemen trackingInput atau tracking-result tidak ditemukan.');
         return;
       }
   
-      r.className = 'active';
-      r.innerHTML = '<div style="text-align:center;padding:16px;color:#7A6555;">🔍 Memeriksa nomor nota...</div>';
+      const nota = inputEl.value.trim().toUpperCase();
+  
+      if (!nota) {
+        resultEl.classList.add('active');
+        resultEl.innerHTML = `
+          <div style="color:#C0171C;font-weight:700;">
+            ⚠️ Masukkan nomor nota terlebih dahulu.
+          </div>
+        `;
+        return;
+      }
+  
+      resultEl.classList.add('active');
+      resultEl.innerHTML = `
+        <div style="text-align:center;padding:16px;color:#7A6555;">
+          🔍 Memeriksa nomor nota...
+        </div>
+      `;
   
       try {
-        const response = await fetch(`${TRACKING_API_BASE}/${encodeURIComponent(v)}`, {
+        const response = await fetch(`${TRACKING_API_BASE}/${encodeURIComponent(nota)}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
         });
   
-        const payload = await response.json();
+        let payload;
+        try {
+          payload = await response.json();
+        } catch (e) {
+          console.error('Response API bukan JSON:', e);
+          resultEl.innerHTML = `
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
+              <div style="font-weight:700;color:#1A1008;margin-bottom:6px;">Response server tidak valid</div>
+              <div style="font-size:.875rem;color:#7A6555;line-height:1.6;">
+                API tracking tidak mengembalikan JSON yang valid.
+              </div>
+            </div>
+          `;
+          return;
+        }
   
-        if (!response.ok || !payload.found) {
-          r.innerHTML = `
+        if (!response.ok || !payload.found || !payload.data) {
+          resultEl.innerHTML = `
             <div style="text-align:center;padding:8px 0;">
               <div style="font-size:2rem;margin-bottom:8px;">🔍</div>
               <div style="font-weight:700;color:#1A1008;margin-bottom:6px;">Nomor nota tidak ditemukan</div>
               <div style="font-size:.875rem;color:#7A6555;line-height:1.6;">
-                "<strong>${escapeHtml(v)}</strong>" tidak ada dalam sistem kami.<br>
+                "<strong>${escapeHtml(nota)}</strong>" tidak ada dalam sistem kami.<br>
                 Periksa kembali nomor nota atau hubungi admin kami.
               </div>
               <a href="https://wa.me/628123456789" target="_blank" style="display:inline-block;margin-top:14px;background:#C0171C;color:#fff;padding:10px 20px;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none;">
@@ -1101,6 +1156,7 @@
         }
   
         const d = payload.data;
+  
         const statusColor =
           d.status === 'SELESAI' ? '#16a34a' :
           d.status === 'DALAM PENGIRIMAN' ? '#C0171C' :
@@ -1111,48 +1167,49 @@
           d.status === 'DALAM PENGIRIMAN' ? '#fff7f7' :
           '#fffaf0';
   
-        r.innerHTML = `
+        resultEl.innerHTML = `
           <div style="border-left:4px solid ${statusColor};margin-bottom:16px;background:${statusBg};padding:14px 16px;border-radius:8px;">
             <div style="font-weight:800;font-size:1rem;color:${statusColor};margin-bottom:4px;">
               ● ${escapeHtml(d.status)}
             </div>
             <div style="font-size:.82rem;color:#7A6555;">
-              No. Nota: <strong style="color:#1A1008">${escapeHtml(d.tracking_number)}</strong>
+              No. Nota: <strong style="color:#1A1008">${escapeHtml(d.tracking_number ?? nota)}</strong>
             </div>
           </div>
   
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.875rem;margin-bottom:16px;">
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
               <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Tujuan</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.tujuan)}</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.tujuan ?? '-')}</div>
             </div>
   
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
               <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Koli</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.koli)}</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.koli ?? '-')}</div>
             </div>
   
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
               <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Posisi Terkini</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.lokasi)}</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.lokasi ?? '-')}</div>
             </div>
   
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
               <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Estimasi / Update</div>
-              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.estimasi_tiba)}</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.estimasi_tiba ?? d.updated_at ?? '-')}</div>
             </div>
           </div>
   
           <div style="margin-bottom:6px;font-size:.8rem;color:#7A6555;font-weight:600;">Progress Pengiriman</div>
           <div style="background:#E8DDD0;border-radius:100px;height:10px;overflow:hidden;">
-            <div style="width:${d.progress}%;height:100%;background:linear-gradient(90deg,${statusColor},#D4A017);border-radius:100px;transition:width .8s;"></div>
+            <div style="width:${Number(d.progress ?? 0)}%;height:100%;background:linear-gradient(90deg,${statusColor},#D4A017);border-radius:100px;transition:width .8s;"></div>
           </div>
-          <div style="text-align:right;font-size:.75rem;color:#7A6555;margin-top:4px;">${d.progress}% selesai</div>
+          <div style="text-align:right;font-size:.75rem;color:#7A6555;margin-top:4px;">${escapeHtml(d.progress ?? 0)}% selesai</div>
         `;
-      } catch (error) {
-        console.error(error);
   
-        r.innerHTML = `
+      } catch (error) {
+        console.error('Tracking error:', error);
+  
+        resultEl.innerHTML = `
           <div style="text-align:center;padding:8px 0;">
             <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
             <div style="font-weight:700;color:#1A1008;margin-bottom:6px;">Tracking sedang bermasalah</div>
@@ -1164,42 +1221,27 @@
       }
     }
   
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+      const inputEl = document.getElementById('trackingInput');
+      const buttonEl = document.getElementById('trackButton');
   
-    document.getElementById('trackingInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        trackShipment();
+      if (buttonEl) {
+        buttonEl.addEventListener('click', trackShipment);
+      } else {
+        console.warn('Element #trackButton tidak ditemukan.');
+      }
+  
+      if (inputEl) {
+        inputEl.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            trackShipment();
+          }
+        });
+      } else {
+        console.warn('Element #trackingInput tidak ditemukan.');
       }
     });
   </script>
-  <script>
-  // ── FORM ──
-  function kirimForm() {
-    var n = document.getElementById('fNama').value.trim();
-    var w = document.getElementById('fWa').value.trim();
-    if (!n || !w) {
-      alert('Mohon isi nama dan nomor WhatsApp Anda.');
-      return;
-    }
-    document.getElementById('kons-form-body').style.display = 'none';
-    document.getElementById('form-ok').style.display = 'block';
-  }
-
-  // ── REVEAL ON SCROLL ──
-  var revEls = document.querySelectorAll('.reveal');
-  var obs = new IntersectionObserver(function(entries) {
-    entries.forEach(function(e) {
-      if (e.isIntersecting) { e.target.classList.add('vis'); }
-    });
-  }, { threshold: 0.1 });
-  revEls.forEach(function(el) { obs.observe(el); });
-</script>
 </body>
 </html>
