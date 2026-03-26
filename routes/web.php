@@ -197,4 +197,5 @@ Route::middleware(['auth'])->get('/api/customers/search', [CustomerController::c
 
    
 //Tracking publik tanpa login, bisa akses via URL seperti /public/track/NOTA12345
-Route::get('/public/track/{nota}', [PublicTrackingController::class, 'show']);
+Route::get('/public/track/{nota}', [PublicTrackingController::class, 'show'])
+    ->where('nota', '.*');
