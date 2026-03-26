@@ -5,8 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Shipment;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Schema;
-
 
 class PublicTrackingController extends Controller
 {
@@ -15,9 +13,7 @@ class PublicTrackingController extends Controller
         $nota = strtoupper(trim($nota));
 
         $shipment = Shipment::query()
-            ->where('shipment_no', $nota)
-            ->orWhere('no_nota', $nota)
-            ->latest('id')
+            ->where('no_nota', $nota)
             ->first();
 
         if (! $shipment) {
@@ -27,81 +23,43 @@ class PublicTrackingController extends Controller
             ], 404);
         }
 
-        $status = $this->normalizeStatus($shipment->status ?? null);
+        $status = strtoupper(trim((string) ($shipment->status_pengiriman ?? 'DITERIMA')));
 
-        return response()->json([
-            'found' => true,
-            'data' => [
-                'tracking_number' => $shipment->shipment_no ?? $shipment->no_nota ?? '-',
-                'status' => $status,
-                'tujuan' => $shipment->tujuan ?? '-',
-                'koli' => $this->extractKoli($shipment->shipment_no ?? $shipment->no_nota ?? ''),
-                'lokasi' => $this->resolveLocation($status, $shipment),
-                'estimasi_tiba' => $this->resolveEstimatedArrival($status, $shipment),
-                'progress' => $this->resolveProgress($status),
-                'updated_at' => optional($shipment->updated_at)?->format('d M Y H:i'),
-            ],
-        ]);
-    }
-
-    private function normalizeStatus(?string $status): string
-    {
-        $status = strtoupper(trim((string) $status));
-
-        return match ($status) {
-            'DITERIMA' => 'DITERIMA',
-            'DALAM PENGIRIMAN' => 'DALAM PENGIRIMAN',
-            'SELESAI' => 'SELESAI',
-            default => 'DITERIMA',
-        };
-    }
-
-    private function resolveProgress(string $status): int
-    {
-        return match ($status) {
+        $progress = match ($status) {
             'DITERIMA' => 20,
             'DALAM PENGIRIMAN' => 70,
             'SELESAI' => 100,
             default => 20,
         };
-    }
 
-    private function resolveLocation(string $status, Shipment $shipment): string
-    {
-        return match ($status) {
+        $lokasi = match ($status) {
             'DITERIMA' => 'Gudang Surabaya',
             'DALAM PENGIRIMAN' => 'Dalam Pengiriman',
             'SELESAI' => $shipment->tujuan ?? 'Tujuan',
             default => 'Gudang Surabaya',
         };
-    }
 
-    private function resolveEstimatedArrival(string $status, Shipment $shipment): string
-    {
-        if ($status === 'SELESAI') {
-            return optional($shipment->updated_at)?->format('d M Y') ?? '-';
+        $estimasi = $status === 'SELESAI'
+            ? optional($shipment->updated_at)?->format('d M Y')
+            : 'Menunggu update';
+
+        $koli = '-';
+        if (! empty($shipment->no_nota) && str_contains($shipment->no_nota, '/')) {
+            $parts = explode('/', $shipment->no_nota);
+            $koli = $parts[1] ?? '-';
         }
 
-        if (! empty($shipment->tanggal_muat)) {
-            try {
-                return \Carbon\Carbon::parse($shipment->tanggal_muat)
-                    ->addDays(5)
-                    ->format('d M Y');
-            } catch (\Throwable $e) {
-                return 'Menunggu update';
-            }
-        }
-
-        return 'Menunggu update';
-    }
-
-    private function extractKoli(string $nota): string
-    {
-        if (str_contains($nota, '/')) {
-            $parts = explode('/', $nota);
-            return $parts[1] ?? '-';
-        }
-
-        return '-';
+        return response()->json([
+            'found' => true,
+            'data' => [
+                'tracking_number' => $shipment->no_nota,
+                'status' => $status,
+                'tujuan' => $shipment->tujuan ?? '-',
+                'koli' => $koli,
+                'lokasi' => $lokasi,
+                'estimasi_tiba' => $estimasi,
+                'progress' => $progress,
+            ],
+        ]);
     }
 }
