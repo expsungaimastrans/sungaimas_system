@@ -79,14 +79,14 @@ class PublicTrackingController extends Controller
         // =========================
         $progress = match ($status) {
             'DITERIMA' => 20,
-            'DALAM PENGIRIMAN' => 70,
+            'DALAM_PENGIRIMAN' => 70,
             'SELESAI' => 100,
             default => 20,
         };
 
         $currentLocation = match ($status) {
             'DITERIMA' => 'Gudang Surabaya — siap dimuat',
-            'DALAM PENGIRIMAN' => 'Dalam perjalanan menuju kota tujuan',
+            'DALAM_PENGIRIMAN' => 'Dalam perjalanan menuju kota tujuan',
             'SELESAI' => 'Barang telah diantarkan',
             default => 'Gudang Surabaya',
         };
@@ -97,7 +97,7 @@ class PublicTrackingController extends Controller
         if ($status === 'DITERIMA') {
             $statusDescription = 'Diterima di gudang SungaiMas Surabaya pada tanggal ' .
                 ($notaDate ? $notaDate->format('d M Y') : '-');
-        } elseif ($status === 'DALAM PENGIRIMAN') {
+        } elseif ($status === 'DALAM_PENGIRIMAN') {
             $statusDescription = 'Barang anda dibawa oleh sopir ' . ($driverName ?: '-') .
                 ' dan keberangkatan kapal tanggal ' . ($departureDate ? $departureDate->format('d M Y') : '-');
         } else {
