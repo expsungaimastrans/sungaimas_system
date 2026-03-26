@@ -687,8 +687,8 @@
   <div class="cards-grid">
     <div class="card reveal">
       <div class="card-ic">💰</div>
-      <h3>Harga Surabaya</h3>
-      <p>Belanja semua kebutuhan Anda dengan harga pasar Surabaya. Kami yang belanjakan dan kirimkan langsung ke tujuan di Flores — jauh lebih hemat dari beli lokal.</p>
+      <h3>Harga Murah</h3>
+      <p>Kirim barang kamu dengan ongkos kirim yang kompetitif dan terjangkau.</p>
     </div>
     <div class="card reveal">
       <div class="card-ic">🏭</div>
@@ -713,8 +713,13 @@
     <div class="card reveal">
       <div class="card-ic">🤝</div>
       <h3>Jasa Titip Belanja</h3>
-      <p>Percayakan belanja kebutuhan Anda kepada kami. Tim kami belanjakan di Surabaya dengan harga terbaik, lalu langsung dikemas dan dikirim ke Flores.</p>
+      <p>Percayakan belanja kebutuhan Anda kepada kami. Tim kami siap belanjakan barang kamu di Surabaya dengan harga terbaik, lalu langsung dikemas dan dikirim ke Flores. (Hubungi Kami untuk Syarat dan ketentuan)</p>
     </div>
+    <div class="card reveal">
+        <div class="card-ic">🤝</div>
+        <h3>Siap Bantu Packing</h3>
+        <p>Barang anda perlu perlindungan lebih ?, kami siap bantu packing kayu agar barang kamu 100% aman sampai tujuan.</p>
+      </div>
   </div>
 </section>
 
@@ -1051,70 +1056,130 @@
 
 <script>
   // ── TRACKING ──
-  function doTrack() {
-    var v = document.getElementById('trackInput').value.trim();
-    var r = document.getElementById('track-result');
-    if (!v) {
-      r.className = 'show';
-      r.innerHTML = '<div style="color:#C0171C;font-weight:600;">⚠️ Masukkan nomor nota terlebih dahulu.</div>';
-      return;
-    }
-    r.className = 'show';
-    r.innerHTML = '<div style="text-align:center;padding:16px;color:#7A6555;">🔍 Memeriksa nomor nota...</div>';
-    setTimeout(function() {
-      var db = {
-        'SMT-2024-00123': {status:'Dalam Perjalanan', lokasi:'Labuan Bajo', tujuan:'Ruteng', kirim:'20 Des 2024', eta:'22 Des 2024', pct:65, barang:'Bahan bangunan (3 ton)'},
-        'SMT-2024-00456': {status:'Terkirim ✓', lokasi:'Ende', tujuan:'Ende', kirim:'18 Des 2024', eta:'18 Des 2024', pct:100, barang:'Furniture & elektronik'},
-        'SMT-2024-00789': {status:'Di Gudang Surabaya', lokasi:'Surabaya', tujuan:'Bajawa', kirim:'–', eta:'28 Des 2024', pct:10, barang:'Sembako (5 ton)'},
-      };
-      var d = db[v.toUpperCase()];
-      if (d) {
-        var c = d.pct===100?'#16a34a':'#C0171C';
-        var bg = d.pct===100?'#f0fdf4':'#fff7f7';
+    const TRACKING_API_BASE = '/api/public/track';
+    // kalau beda domain:
+    // const TRACKING_API_BASE = 'https://domain-system-kamu.com/api/public/track';
+  
+    async function trackShipment() {
+      var v = document.getElementById('trackingInput').value.trim().toUpperCase();
+      var r = document.getElementById('tracking-result');
+  
+      if (!v) {
+        r.className = 'active';
+        r.innerHTML = '<div style="color:#C0171C;font-weight:700;">⚠️ Masukkan nomor nota terlebih dahulu.</div>';
+        return;
+      }
+  
+      r.className = 'active';
+      r.innerHTML = '<div style="text-align:center;padding:16px;color:#7A6555;">🔍 Memeriksa nomor nota...</div>';
+  
+      try {
+        const response = await fetch(`${TRACKING_API_BASE}/${encodeURIComponent(v)}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+  
+        const payload = await response.json();
+  
+        if (!response.ok || !payload.found) {
+          r.innerHTML = `
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-size:2rem;margin-bottom:8px;">🔍</div>
+              <div style="font-weight:700;color:#1A1008;margin-bottom:6px;">Nomor nota tidak ditemukan</div>
+              <div style="font-size:.875rem;color:#7A6555;line-height:1.6;">
+                "<strong>${escapeHtml(v)}</strong>" tidak ada dalam sistem kami.<br>
+                Periksa kembali nomor nota atau hubungi admin kami.
+              </div>
+              <a href="https://wa.me/628123456789" target="_blank" style="display:inline-block;margin-top:14px;background:#C0171C;color:#fff;padding:10px 20px;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none;">
+                Hubungi Admin WA
+              </a>
+            </div>
+          `;
+          return;
+        }
+  
+        const d = payload.data;
+        const statusColor =
+          d.status === 'SELESAI' ? '#16a34a' :
+          d.status === 'DALAM PENGIRIMAN' ? '#C0171C' :
+          '#B8860B';
+  
+        const statusBg =
+          d.status === 'SELESAI' ? '#f0fdf4' :
+          d.status === 'DALAM PENGIRIMAN' ? '#fff7f7' :
+          '#fffaf0';
+  
         r.innerHTML = `
-          <div style="border-left:4px solid ${c};padding-left:16px;margin-bottom:16px;background:${bg};padding:14px 16px;border-radius:8px;">
-            <div style="font-weight:800;font-size:1rem;color:${c};margin-bottom:4px;">● ${d.status}</div>
-            <div style="font-size:.82rem;color:#7A6555;">No. Nota: <strong style="color:#1A1008">${v.toUpperCase()}</strong></div>
+          <div style="border-left:4px solid ${statusColor};margin-bottom:16px;background:${statusBg};padding:14px 16px;border-radius:8px;">
+            <div style="font-weight:800;font-size:1rem;color:${statusColor};margin-bottom:4px;">
+              ● ${escapeHtml(d.status)}
+            </div>
+            <div style="font-size:.82rem;color:#7A6555;">
+              No. Nota: <strong style="color:#1A1008">${escapeHtml(d.tracking_number)}</strong>
+            </div>
           </div>
+  
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.875rem;margin-bottom:16px;">
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
-              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Jenis Barang</div>
-              <div style="color:#1A1008;font-weight:600;">${d.barang}</div>
-            </div>
-            <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
               <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Tujuan</div>
-              <div style="color:#1A1008;font-weight:600;">${d.tujuan}</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.tujuan)}</div>
             </div>
+  
+            <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
+              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Koli</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.koli)}</div>
+            </div>
+  
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
               <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Posisi Terkini</div>
-              <div style="color:#1A1008;font-weight:600;">${d.lokasi}</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.lokasi)}</div>
             </div>
+  
             <div style="background:#F4EFE7;border-radius:8px;padding:10px 14px;">
-              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Estimasi Tiba</div>
-              <div style="color:#1A1008;font-weight:600;">${d.eta}</div>
+              <div style="color:#7A6555;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Estimasi / Update</div>
+              <div style="color:#1A1008;font-weight:600;">${escapeHtml(d.estimasi_tiba)}</div>
             </div>
           </div>
+  
           <div style="margin-bottom:6px;font-size:.8rem;color:#7A6555;font-weight:600;">Progress Pengiriman</div>
           <div style="background:#E8DDD0;border-radius:100px;height:10px;overflow:hidden;">
-            <div style="width:${d.pct}%;height:100%;background:linear-gradient(90deg,${c},#D4A017);border-radius:100px;transition:width .8s;"></div>
+            <div style="width:${d.progress}%;height:100%;background:linear-gradient(90deg,${statusColor},#D4A017);border-radius:100px;transition:width .8s;"></div>
           </div>
-          <div style="text-align:right;font-size:.75rem;color:#7A6555;margin-top:4px;">${d.pct}% selesai</div>`;
-      } else {
+          <div style="text-align:right;font-size:.75rem;color:#7A6555;margin-top:4px;">${d.progress}% selesai</div>
+        `;
+      } catch (error) {
+        console.error(error);
+  
         r.innerHTML = `
           <div style="text-align:center;padding:8px 0;">
-            <div style="font-size:2rem;margin-bottom:8px;">🔍</div>
-            <div style="font-weight:700;color:#1A1008;margin-bottom:6px;">Nomor nota tidak ditemukan</div>
-            <div style="font-size:.875rem;color:#7A6555;line-height:1.6;">"<strong>${v}</strong>" tidak ada dalam sistem kami.<br>Periksa kembali nomor nota atau hubungi admin kami.</div>
-            <a href="https://wa.me/628123456789" target="_blank" style="display:inline-block;margin-top:14px;background:#C0171C;color:#fff;padding:10px 20px;border-radius:8px;font-weight:700;font-size:.85rem;text-decoration:none;">Hubungi Admin WA</a>
-          </div>`;
+            <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
+            <div style="font-weight:700;color:#1A1008;margin-bottom:6px;">Tracking sedang bermasalah</div>
+            <div style="font-size:.875rem;color:#7A6555;line-height:1.6;">
+              Gagal mengambil data tracking. Silakan coba lagi atau hubungi admin.
+            </div>
+          </div>
+        `;
       }
-    }, 1000);
-  }
-
-  document.getElementById('trackInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') doTrack();
-  });
-
+    }
+  
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+  
+    document.getElementById('trackingInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        trackShipment();
+      }
+    });
+  </script>
+  <script>
   // ── FORM ──
   function kirimForm() {
     var n = document.getElementById('fNama').value.trim();

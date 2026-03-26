@@ -10,6 +10,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\Api\PublicTrackingController;
 
 // ===================================================
 // PUBLIC
@@ -191,3 +192,9 @@ Route::middleware(['auth', 'role:owner,admin'])->prefix('customers')->group(func
 // API customer search (untuk autocomplete, semua role yg login)
 Route::middleware(['auth'])->get('/api/customers/search', [CustomerController::class, 'apiSearch'])
     ->name('customers.api.search');
+
+
+
+   
+//Tracking publik tanpa login, bisa akses via URL seperti /public/track/NOTA12345
+Route::get('/public/track/{nota}', [PublicTrackingController::class, 'show']);
