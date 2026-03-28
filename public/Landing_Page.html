@@ -1021,6 +1021,7 @@
             <option>Ruteng</option>
             <option>Borong</option>
             <option>Bajawa</option>
+            <option>Mbay</option>
             <option>Ende</option>
             <option>Palu</option>
             <option>Lainnya</option>
@@ -1030,7 +1031,7 @@
           <label>Jenis Barang & Kebutuhan</label>
           <textarea id="fPesan" placeholder="Ceritakan jenis barang, perkiraan volume/berat, dan kebutuhan khusus Anda..."></textarea>
         </div>
-        <button class="btn-submit" onclick="kirimForm()">Kirim Konsultasi →</button>
+        <button type="button" class="btn-submit" onclick="kirimForm()">Kirim Konsultasi →</button>
       </div>
       <div id="form-ok">
         <div class="ok-ic">✅</div>
@@ -1252,14 +1253,51 @@ result.innerHTML = `
 
   // ── FORM ──
   function kirimForm() {
-    var n = document.getElementById('fNama').value.trim();
-    var w = document.getElementById('fWa').value.trim();
-    if (!n || !w) {
-      alert('Mohon isi nama dan nomor WhatsApp Anda.');
+    const nama = document.getElementById('fNama')?.value.trim() || '';
+    const wa = document.getElementById('fWa')?.value.trim() || '';
+    const tujuan = document.getElementById('fTujuan')?.value || '';
+    const pesan = document.getElementById('fPesan')?.value.trim() || '';
+
+    if (!nama) {
+      alert('Mohon isi nama lengkap.');
+      document.getElementById('fNama')?.focus();
       return;
     }
-    document.getElementById('kons-form-body').style.display = 'none';
-    document.getElementById('form-ok').style.display = 'block';
+
+    if (!wa) {
+      alert('Mohon isi nomor WhatsApp Anda.');
+      document.getElementById('fWa')?.focus();
+      return;
+    }
+
+    if (!tujuan) {
+      alert('Mohon pilih tujuan pengiriman.');
+      document.getElementById('fTujuan')?.focus();
+      return;
+    }
+
+    const adminWa = '6285353744425'; // GANTI dengan nomor WhatsApp admin kamu, tanpa + dan tanpa spasi
+
+    const text =
+`Halo Sungai Mas Trans, saya ingin konsultasi pengiriman.
+
+Nama: ${nama}
+No. WhatsApp: ${wa}
+Tujuan Pengiriman: ${tujuan}
+Jenis Barang & Kebutuhan:
+${pesan || '-'}`;
+
+    const waUrl = `https://wa.me/${adminWa}?text=${encodeURIComponent(text)}`;
+
+    window.open(waUrl, '_blank');
+
+    const formBody = document.getElementById('kons-form-body');
+    const formOk = document.getElementById('form-ok');
+
+    if (formBody && formOk) {
+      formBody.style.display = 'none';
+      formOk.style.display = 'block';
+    }
   }
 
   // ── REVEAL ON SCROLL ──
