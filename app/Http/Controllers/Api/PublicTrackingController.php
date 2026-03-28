@@ -99,7 +99,7 @@ class PublicTrackingController extends Controller
                 ($notaDate ? $notaDate->format('d M Y') : '-');
         } elseif ($status === 'DALAM_PENGIRIMAN') {
             $statusDescription = 'Barang anda dibawa oleh sopir ' . ($driverName ?: '-') .
-                ' dan keberangkatan kapal tanggal ' . ($departureDate ? $departureDate->format('d M Y') : '-');
+                ' mengikuti keberangkatan kapal tanggal ' . ($departureDate ? $departureDate->format('d M Y') : '-');
         } else {
             $statusDescription = 'Barang anda sudah diantarkan. Harap konfirmasi ke kami apabila belum menerima barang anda. ' .
                 'Komplain kerusakan dan kekurangan barang maksimal 1x24 jam terhitung dari tanggal barang diantarkan.';
