@@ -316,9 +316,11 @@ function setSubmitState() {
     const btn      = document.getElementById('btn-simpan');
     const hint     = document.getElementById('hint-penerima');
     const hintCari = document.getElementById('hint-cari-penerima');
-    btn.disabled   = !verified;
-    if (hint)     hint.style.display     = verified ? 'none' : 'block';
-    if (hintCari) hintCari.style.display = verified ? 'none' : 'block';
+    // Tombol tetap aktif jika field nama_penerima sudah terisi
+    const namaIsi  = (document.getElementById('nama_penerima')?.value?.trim()?.length ?? 0) > 0;
+    btn.disabled   = !verified && !namaIsi;
+    if (hint)     hint.style.display     = (verified || namaIsi) ? 'none' : 'block';
+    if (hintCari) hintCari.style.display = (verified || namaIsi) ? 'none' : 'block';
 }
 
 function enablePenerimaFields() {
