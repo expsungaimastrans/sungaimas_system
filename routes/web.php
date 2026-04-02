@@ -243,7 +243,7 @@ Route::get('/debug-r2', function () {
 });
 
 
-use Illuminate\Support\Facades\Http;
+
 
 Route::get('/test-kirimi-no-media', function () {
     $response = Http::asJson()->timeout(30)->post('https://api.kirimi.id/v1/send-message', [
