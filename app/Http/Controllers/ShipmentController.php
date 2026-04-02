@@ -228,11 +228,11 @@ public function exportCsv(Request $request)
         }
 
        // ===== nomor urut di bulan ini (4 digit) — pakai ID terakhir bukan count =====
-      // ===== nomor urut global (4 digit) — lanjut lintas bulan =====
        $bulan = now()->format('m');
 
-       $lastNota = Shipment::whereNotNull('no_nota')
-           ->where('no_nota', 'regexp', '^[0-9]{6}/')
+       $lastNota = Shipment::whereYear('created_at', now()->year)
+           ->whereMonth('created_at', now()->month)
+           ->where('no_nota', 'like', $bulan . '%')
            ->orderByDesc('id')
            ->value('no_nota');
 
