@@ -199,3 +199,13 @@ Route::middleware(['auth'])->get('/api/customers/search', [CustomerController::c
 //Tracking publik tanpa login, bisa akses via URL seperti /public/track/NOTA12345
 Route::get('/public/track/{nota}', [PublicTrackingController::class, 'show'])
     ->where('nota', '.*');
+
+    use Illuminate\Support\Facades\Storage;
+
+Route::get('/test-r2', function () {
+    Storage::disk('s3')->put('test.txt', 'HELLO R2');
+
+    return [
+        'exists' => Storage::disk('s3')->exists('test.txt'),
+    ];
+});
