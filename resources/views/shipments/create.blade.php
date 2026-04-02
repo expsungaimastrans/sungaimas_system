@@ -236,7 +236,7 @@
             </div>
 
             <div class="d-flex justify-content-center mt-4">
-                <button type="submit" id="btn-simpan" class="btn btn-brand w-100 btn-simpan-nota" style="max-width:520px;" disabled>
+                <button type="submit" id="btn-simpan" class="btn btn-brand w-100 btn-simpan-nota" style="max-width:520px;">
                     💾 Simpan Nota
                 </button>
                 <div id="hint-penerima" class="text-danger small mt-2 text-center" style="display:none;">⚠️ Nama penerima harus dipilih atau ditambahkan dari data customer</div>
@@ -309,18 +309,8 @@ function toggleTujuan() {
 }
 
 // ============ LOCK / UNLOCK ============
-const lockedFields = { pengirim: false, penerima: false };
-
 function setSubmitState() {
-    const verified = lockedFields['penerima'];
-    const btn      = document.getElementById('btn-simpan');
-    const hint     = document.getElementById('hint-penerima');
-    const hintCari = document.getElementById('hint-cari-penerima');
-    // Tombol tetap aktif jika field nama_penerima sudah terisi
-    const namaIsi  = (document.getElementById('nama_penerima')?.value?.trim()?.length ?? 0) > 0;
-    btn.disabled   = !verified && !namaIsi;
-    if (hint)     hint.style.display     = (verified || namaIsi) ? 'none' : 'block';
-    if (hintCari) hintCari.style.display = (verified || namaIsi) ? 'none' : 'block';
+    // Tidak memblokir submit — validasi dilakukan di backend
 }
 
 function enablePenerimaFields() {
