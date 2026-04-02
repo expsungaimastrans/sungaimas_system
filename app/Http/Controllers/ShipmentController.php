@@ -228,21 +228,21 @@ public function exportCsv(Request $request)
         }
 
        // ===== nomor urut di bulan ini (4 digit) — pakai ID terakhir bukan count =====
-       $bulan = now()->format('m');
+      // ===== nomor urut global (4 digit) — lanjut lintas bulan =====
+      $bulan = now()->format('m');
 
-       $lastNota = Shipment::whereYear('created_at', now()->year)
-           ->whereMonth('created_at', now()->month)
-           ->where('no_nota', 'like', $bulan . '%')
-           ->orderByDesc('id')
-           ->value('no_nota');
+      $lastNota = Shipment::whereNotNull('no_nota')
+          ->where('no_nota', 'regexp', '^[0-9]{6}/')
+          ->orderByDesc('id')
+          ->value('no_nota');
 
-       $lastSeq = 0;
-       if ($lastNota) {
-           $part    = explode('/', $lastNota)[0]; // "030404" → ambil sebelum slash
-           $lastSeq = (int) substr($part, -4);    // ambil 4 digit terakhir
-       }
+      $lastSeq = 0;
+      if ($lastNota) {
+          $part    = explode('/', $lastNota)[0]; // "030404" → ambil sebelum slash
+          $lastSeq = (int) substr($part, -4);    // ambil 4 digit terakhir
+      }
 
-       $urut = str_pad($lastSeq + 1, 4, '0', STR_PAD_LEFT);
+      $urut = str_pad($lastSeq + 1, 4, '0', STR_PAD_LEFT);
 
 
 
