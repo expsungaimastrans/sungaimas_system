@@ -574,7 +574,12 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleTujuan();
     recalcAll();
     disablePenerimaFields(); // field penerima terkunci sampai customer dipilih
-    setSubmitState();        // tombol simpan disabled di awal
+    // Jika ada old value (dari withInput setelah gagal), aktifkan tombol
+    const oldNama = document.getElementById('nama_penerima')?.value?.trim();
+    if (oldNama) {
+        lockedFields['penerima'] = true;
+    }
+    setSubmitState();       // tombol simpan disabled di awal
 
     initAC('nama_pengirim', 'ac-pengirim', 'PENGIRIM', (c) => {
         if (c.no_telp) document.getElementById('telp_pengirim').value = c.no_telp;
