@@ -226,3 +226,18 @@ Route::get('/test-r2-public', function () {
         'url' => $url,
     ];
 });
+
+
+Route::get('/debug-r2', function () {
+    $path = 'test.txt';
+
+    Storage::disk('s3')->put($path, 'HELLO R2');
+
+    return [
+        'bucket'   => env('AWS_BUCKET'),
+        'endpoint' => env('AWS_ENDPOINT'),
+        'aws_url'  => env('AWS_URL'),
+        'exists'   => Storage::disk('s3')->exists($path),
+        'url'      => rtrim(env('AWS_URL', ''), '/') . '/' . $path,
+    ];
+});
