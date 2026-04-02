@@ -241,3 +241,21 @@ Route::get('/debug-r2', function () {
         'url'      => rtrim(env('AWS_URL', ''), '/') . '/' . $path,
     ];
 });
+
+
+
+Route::get('/test-kirimi-no-media', function () {
+    $response = Http::asJson()->timeout(30)->post('https://api.kirimi.id/v1/send-message', [
+        'user_code' => env('KIRIMI_USER_CODE'),
+        'secret' => env('KIRIMI_SECRET'),
+        'device_id' => env('KIRIMI_DEVICE_ID'),
+        'receiver' => '6287788406221', // ganti nomor kamu
+        'message' => 'Tes Kirimi tanpa media',
+        'enableTypingEffect' => false,
+    ]);
+
+    return [
+        'status' => $response->status(),
+        'body' => $response->json() ?? $response->body(),
+    ];
+});
