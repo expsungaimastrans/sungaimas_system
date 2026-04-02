@@ -209,3 +209,20 @@ Route::get('/test-r2', function () {
         'exists' => Storage::disk('s3')->exists('test.txt'),
     ];
 });
+
+
+Route::get('/test-r2-public', function () {
+    $path = 'test.txt';
+
+    if (!Storage::disk('s3')->exists($path)) {
+        return ['ok' => false, 'message' => 'test.txt tidak ada di R2'];
+    }
+
+    $url = rtrim(env('AWS_URL', ''), '/') . '/' . $path;
+
+    return [
+        'ok' => true,
+        'path' => $path,
+        'url' => $url,
+    ];
+});
