@@ -461,11 +461,23 @@ public function storeInvoice(Request $request)
         }
 
         // 3. Buat URL publik R2
-        $awsUrl = rtrim(env('AWS_URL', ''), '/');
-        $pdfUrl = $awsUrl
-            ? $awsUrl . '/' . $r2Path
-            : \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($r2Path, now()->addHours(48));
+    $awsUrl = rtrim(env('AWS_URL', ''), '/');
 
+    if (empty($awsUrl)) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'AWS_URL / CDN URL belum diset di .env',
+        ], 500);
+}
+
+    if (!\Illuminate\Support\Facades\Storage::disk('s3')->exists($r2Path)) {
+        return response()->json([
+            'ok' => false,  
+            'message' => 'PDF tidak ditemukan di R2 pada path: ' . $r2Path,
+        ], 500);
+}
+
+    $pdfUrl = $awsUrl . '/' . $r2Path;
         // 4. Kirim via Kirimi
         $total   = 'Rp ' . number_format((float) $invoice->total, 0, ',', '.');
         $message = "Halo,\n\n"
