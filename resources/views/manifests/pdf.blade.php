@@ -200,7 +200,7 @@
       <td colspan="2"></td>
       <td class="text-center" style="font-size:8px;">{{ number_format($totalKg, 1, '.', '') }}</td>
       <td></td>
-      <td class="text-right" style="font-size:8px;">{{ number_format($totalHarga, 0, ',', '.') }}</td>
+      <td class="text-right" style="font-size:8px;"></td>
       <td colspan="2"></td>
     </tr>
   </tbody>
