@@ -7,6 +7,15 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    /**
+     * Tambahkan kolom finance baru ke invoices + index/unique constraint.
+     *
+     * Perubahan dari versi sebelumnya:
+     * - Sebelumnya invoice_no & manifest_id tidak diberi unique/index
+     *   karena dianggap sudah ada dari migrasi 02_17. Tapi karena 02_17
+     *   sekarang idempotent (no-op pada DB yang sudah ada), constraint
+     *   tersebut tidak terbentuk. Ditambahkan di sini secara defensive.
+     */
     public function up(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
@@ -34,11 +43,30 @@ return new class extends Migration
         DB::statement("UPDATE invoices SET invoice_no = no_invoice WHERE invoice_no IS NULL OR invoice_no = ''");
         DB::statement("UPDATE invoices SET billed_to = customer WHERE billed_to IS NULL OR billed_to = ''");
         DB::statement("UPDATE invoices SET status = 'BELUM_DITAGIH' WHERE status IS NULL OR status = ''");
+
+        // Tambahkan constraint & index (try-catch karena mungkin sudah ada
+        // dari migrasi 02_17 versi sebelumnya yang sempat jalan)
+        Schema::table('invoices', function (Blueprint $table) {
+            try {
+                $table->unique('invoice_no', 'invoices_invoice_no_unique');
+            } catch (\Throwable $e) {
+                // Sudah ada — abaikan
+            }
+
+            try {
+                $table->index('manifest_id', 'invoices_manifest_id_index');
+            } catch (\Throwable $e) {
+                // Sudah ada — abaikan
+            }
+        });
     }
 
     public function down(): void
     {
         Schema::table('invoices', function (Blueprint $table) {
+            try { $table->dropUnique('invoices_invoice_no_unique'); } catch (\Throwable $e) {}
+            try { $table->dropIndex('invoices_manifest_id_index'); } catch (\Throwable $e) {}
+
             foreach (['invoice_no','billed_to','manifest_id','status','payment_proof_path','paid_at'] as $col) {
                 if (Schema::hasColumn('invoices', $col)) {
                     $table->dropColumn($col);
